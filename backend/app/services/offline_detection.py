@@ -15,6 +15,7 @@ def mark_offline_devices(db: Session):
     )
 
     for device in devices:
+        print(f"Marking device {device.device_id} as OFFLINE")
         device.status = "OFFLINE"
 
     if devices:
