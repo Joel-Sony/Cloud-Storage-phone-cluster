@@ -75,22 +75,25 @@ CREATE TABLE chunks (
 -- CHUNK REPLICATION
 -- =========================
 CREATE TABLE chunk_replication (
+    replication_id INT AUTO_INCREMENT PRIMARY KEY,
+
     chunk_id INT NOT NULL,
     device_id INT NOT NULL,
-    replica_status ENUM('ACTIVE', 'LOST', 'REPLICATING') NOT NULL,
 
-    PRIMARY KEY (chunk_id, device_id),
-    INDEX idx_replication_chunk (chunk_id),
-    INDEX idx_replication_device (device_id),
-    INDEX idx_replication_status (replica_status),
+    replica_status ENUM('REPLICATING', 'ACTIVE', 'LOST')
+        NOT NULL DEFAULT 'REPLICATING',
 
-    CONSTRAINT fk_replication_chunk
+    CONSTRAINT fk_chunk_replication_chunk
         FOREIGN KEY (chunk_id)
         REFERENCES chunks(chunk_id)
         ON DELETE CASCADE,
 
-    CONSTRAINT fk_replication_device
+    CONSTRAINT fk_chunk_replication_device
         FOREIGN KEY (device_id)
         REFERENCES devices(device_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_chunk_device
+        UNIQUE (chunk_id, device_id)
 );
+

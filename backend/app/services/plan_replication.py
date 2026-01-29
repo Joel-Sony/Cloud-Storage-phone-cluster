@@ -1,6 +1,7 @@
 from app.models.device import Device
 from app.models.chunk_replication import ChunkReplication
 
+# Plan replication of a chunk to devices
 def plan_replication(
     db,
     chunk_id: int,
