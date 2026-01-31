@@ -10,6 +10,8 @@ def register_device(
     available_storage: int,
     fingerprint: str,
 ):
+    print(">>> register_device CALLED <<<")
+    print("fingerprint:", fingerprint)
     # Check if device already exists
     existing = (
         db.query(Device)
@@ -36,6 +38,7 @@ def register_device(
 
     db.add(device)
     db.commit()
+    print(">>> commit done <<<")
     db.refresh(device)
 
     return {

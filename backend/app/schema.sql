@@ -36,12 +36,13 @@ CREATE TABLE devices (
     device_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     device_name VARCHAR(255),
-    fingerprint VARCHAR(255) NOT NULL UNIQUE,
+    device_fingerprint VARCHAR(255) NOT NULL UNIQUE,
     status ENUM('ONLINE', 'OFFLINE') NOT NULL DEFAULT 'OFFLINE',
     last_heartbeat TIMESTAMP NOT NULL,
     storage_capacity BIGINT NOT NULL,
     available_storage BIGINT NOT NULL,
-
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
     INDEX idx_devices_user (user_id),
     INDEX idx_devices_status (status),
     INDEX idx_devices_heartbeat (last_heartbeat),
