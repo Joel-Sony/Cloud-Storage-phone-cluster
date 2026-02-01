@@ -28,7 +28,6 @@ def register_device_endpoint(payload: dict):
         db.close()
     
 
-
 class ChunkMetadata(BaseModel):
     chunk_index: int
     chunk_hash: str
@@ -41,6 +40,7 @@ class FileUploadInit(BaseModel):
     num_chunks: int
     chunks: List[ChunkMetadata] # List of hashes the user calculated
 
+# File upload initialization endpoint:
 @router.post("/files/init")
 async def initialize_upload(payload: FileUploadInit, db: Session = Depends(get_db)):
     # A. Create the File record
