@@ -38,7 +38,7 @@ CREATE TABLE devices (
     device_name VARCHAR(255),
     device_fingerprint VARCHAR(255) NOT NULL UNIQUE,
     status ENUM('ONLINE', 'OFFLINE') NOT NULL DEFAULT 'OFFLINE',
-    mode ENUM('User', 'Cluster') NOT NULL, 
+    mode ENUM('User', 'Cluster') NOT NULL DEFAULT 'User', 
     last_heartbeat TIMESTAMP NOT NULL,
     storage_capacity BIGINT NOT NULL,
     available_storage BIGINT NOT NULL,

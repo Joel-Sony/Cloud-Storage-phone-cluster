@@ -19,4 +19,4 @@ class Device(Base):
 
     created_at = Column(DateTime, server_default=func.now())
 
-    mode = Column(Enum("User", "Cluster"), nullable=False)
+    mode = Column(Enum("User", "Cluster"), nullable=False, default="User")
