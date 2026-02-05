@@ -22,8 +22,7 @@ from pathlib import Path
 from fastapi.responses import FileResponse
 import os
 
-
-TEMP_DIR = "./temp_chunks"
+from app.core.constants import TEMP_CHUNK_DIR
 
 router = APIRouter()
 
@@ -115,7 +114,7 @@ async def upload_chunk_data(
         raise HTTPException(status_code=400, detail="Integrity check failed: Hash mismatch")
 
     # 4. Save locally temporarily
-    path = f"./temp_chunks/chunk_{db_chunk.chunk_id}.bin"
+    path = TEMP_CHUNK_DIR / f"chunk_{db_chunk.chunk_id}.bin"
     with open(path, "wb") as f:
         f.write(chunk_data)
 
@@ -124,7 +123,6 @@ async def upload_chunk_data(
     # we tell the cluster to come get it.
     print("Using manager:", manager)
     await distribute_chunk(db, db_chunk, manager)
-
 
     return {"status": "success", "chunk_id": db_chunk.chunk_id}
 
@@ -146,18 +144,3 @@ def heartbeat_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.get("/chunks/{chunk_id}/download")
-def download_chunk(chunk_id: int):
-    path = f"./temp_chunks/chunk_{chunk_id}.bin"
-
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Chunk file not found on server")
-
-    return FileResponse(
-        path,
-        media_type="application/octet-stream",
-        filename=f"chunk_{chunk_id}.bin"
-    )
-
-def chunk_path(chunk_id: int) -> str:
-    return os.path.join(TEMP_DIR, f"chunk_{chunk_id}.bin")

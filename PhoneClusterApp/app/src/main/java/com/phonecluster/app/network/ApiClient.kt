@@ -8,8 +8,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 // singleton instead of a class
 // because class will have multiple connection pools (wasteful resource usage)
 object ApiClient {
-    private const val BASE_URL = "http://10.124.156.168:8000" //hardcoding this for now WILL CHANGE ACCORDING TO THE
-
+//    private const val BASE_URL = "http://10.124.156.168:8000" //hardcoding this for now WILL CHANGE ACCORDING TO THE
+    private const val BASE_URL = "http://192.168.1.9:8000"
     // catches all the HTTP request and response and logs
     //url, header, request (JSON), response (JSON)
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

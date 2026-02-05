@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
+from app.core.chunk_waiter import set_chunk_arrived
 
 from app.core.database import get_db
 from app.models.chunk import Chunk
+from fastapi import Request
 
 router = APIRouter()
-TEMP_DIR = Path("./temp_chunks")
+
 
 @router.get("/chunks/{chunk_id}/download")
 def download_chunk(chunk_id: int, db: Session = Depends(get_db)):
@@ -24,3 +26,9 @@ def download_chunk(chunk_id: int, db: Session = Depends(get_db)):
         filename=f"chunk_{chunk_id}.bin",
         media_type="application/octet-stream"
     )
+
+@router.post("/internal/ingest/{chunk_id}")
+async def ingest_chunk(chunk_id: int, request: Request):
+    data = await request.body()
+    set_chunk_arrived(chunk_id, data)
+    return {"status": "ok"}

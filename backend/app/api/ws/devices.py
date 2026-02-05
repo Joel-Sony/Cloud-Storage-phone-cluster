@@ -93,6 +93,8 @@ async def device_ws(ws: WebSocket):
             #     device.last_heartbeat = datetime.utcnow()
             #     device.available_storage = msg.get("available_storage", device.available_storage)
             #     db.commit()
+
+
             if msg["type"] == "cmd_ack":
                 # Device confirms it received a  command
                 print(f"Device {device.device_id} is processing {msg['task_id']}")
