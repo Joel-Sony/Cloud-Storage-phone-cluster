@@ -1,24 +1,26 @@
-from app.core.database import SessionLocal
 from sqlalchemy.orm import Session 
-from app.services.registration import register_device
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+
+from app.core.database import get_db, SessionLocal
+from app.core.connection_manager import manager
+
 from app.models.chunk import Chunk
 from app.models.device import Device
-from fastapi import APIRouter, Depends, HTTPException
 from app.models.file import File as FileModel   # Avoid name conflict with fastapi 'File'
 from app.models.chunk import Chunk             
+
+from app.services.registration import register_device
+from app.services.distribute_chunk import distribute_chunk
+from app.services.heartbeat import handle_heartbeat
+
+import hashlib
 from pydantic import BaseModel
 from typing import List, Optional 
-from app.core.database import get_db
-from fastapi import UploadFile, File
-import os
-from app.services.distribute_chunk import distribute_chunk
-import hashlib
-from app.services.heartbeat import handle_heartbeat
 from datetime import datetime, timezone
 from pathlib import Path
-from app.core.connection_manager import manager
 from fastapi.responses import FileResponse
-
+import os
 
 Path("temp_chunks").mkdir(exist_ok=True)
 
