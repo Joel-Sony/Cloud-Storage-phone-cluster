@@ -22,7 +22,8 @@ from pathlib import Path
 from fastapi.responses import FileResponse
 import os
 
-Path("temp_chunks").mkdir(exist_ok=True)
+
+TEMP_DIR = "./temp_chunks"
 
 router = APIRouter()
 
@@ -157,3 +158,6 @@ def download_chunk(chunk_id: int):
         media_type="application/octet-stream",
         filename=f"chunk_{chunk_id}.bin"
     )
+
+def chunk_path(chunk_id: int) -> str:
+    return os.path.join(TEMP_DIR, f"chunk_{chunk_id}.bin")
