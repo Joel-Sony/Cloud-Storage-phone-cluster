@@ -18,6 +18,7 @@ def handle_heartbeat(
 
     device.last_heartbeat = datetime.utcnow()
     device.status = "ONLINE"
+    device.mode = "Cluster"
     
     if available_storage is not None:
         if 0 <= available_storage <= device.storage_capacity:

@@ -3,7 +3,7 @@ from app.models.chunk_replication import ChunkReplication
 from app.services.plan_replication import plan_replication
 
 # MUST include http:// or the phone's request will fail
-SERVER_IP = "http://192.168.1.50:8000"  
+SERVER_IP = "http://10.124.156.168:8000"  
 
 async def distribute_chunk(db, chunk, manager):
     # 1. Plan the replication (This adds rows to ChunkReplication)

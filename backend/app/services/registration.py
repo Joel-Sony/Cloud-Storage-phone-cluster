@@ -34,7 +34,8 @@ def register_device(
         last_heartbeat = datetime.utcnow(),
         storage_capacity = storage_capacity,
         available_storage = available_storage,
-        created_at = datetime.utcnow() 
+        created_at = datetime.utcnow(),
+        mode = "User"
     )
 
     db.add(device)
