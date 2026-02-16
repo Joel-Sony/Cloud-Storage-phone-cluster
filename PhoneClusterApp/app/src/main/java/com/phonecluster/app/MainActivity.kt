@@ -33,7 +33,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Registration) }
-
     when (currentScreen) {
         Screen.Registration -> {
             RegistrationScreen(

@@ -1,0 +1,19 @@
+Databases are a core component of modern software systems. They provide persistent
+storage, efficient querying, and concurrency control. Relational databases organize
+data into tables with rows and columns, while NoSQL databases use alternative data models.
+
+Transaction management ensures data consistency in the presence of concurrent access.
+ACID properties define the guarantees provided by traditional database systems.
+Distributed databases extend these ideas across multiple machines.
+
+Replication and sharding are common techniques used in large-scale database systems.
+Replication improves availability and fault tolerance, while sharding distributes data
+across multiple nodes to improve performance and scalability.
+
+Storage engines are responsible for how data is written to disk and retrieved.
+Indexing structures such as B-trees and LSM trees are used to optimize query performance.
+Choosing the right database system depends on workload characteristics and consistency
+requirements.
+
+Modern applications often combine databases with caching layers and message queues to
+build scalable and responsive systems.

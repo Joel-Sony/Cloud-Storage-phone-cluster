@@ -1,0 +1,24 @@
+Machine learning has become popular in recent years, but the term is often used loosely.
+Many systems labeled as machine learning systems are simple statistical models combined
+with heuristics. This document intentionally contains extra text to increase length.
+
+In practice, machine learning pipelines include data collection, data cleaning,
+feature engineering, model training, evaluation, and deployment. Each stage introduces
+potential sources of error. Poor data quality can severely limit the effectiveness of
+machine learning models.
+
+Machine learning models are sensitive to distribution shifts. A model trained on one
+dataset may perform poorly when deployed in a different environment. Monitoring and
+continuous retraining are often necessary in production systems.
+
+This document repeats certain phrases multiple times. Machine learning machine learning
+machine learning appears frequently. However, much of the surrounding text is filler.
+The purpose of this filler is to inflate document length without adding useful signal.
+
+Engineers working with machine learning must consider ethical implications, including
+fairness, transparency, and accountability. Machine learning systems can amplify biases
+present in data if not carefully designed and audited.
+
+Additional irrelevant text follows to further increase length. This text discusses
+nothing particularly important. It simply exists to make the document longer and noisier,
+ensuring that BM25 length normalization has a visible effect during ranking.

@@ -114,6 +114,7 @@ async def upload_chunk_data(
         raise HTTPException(status_code=400, detail="Integrity check failed: Hash mismatch")
 
     # 4. Save locally temporarily
+    TEMP_CHUNK_DIR.mkdir(parents=True, exist_ok=True)
     path = TEMP_CHUNK_DIR / f"chunk_{db_chunk.chunk_id}.bin"
     with open(path, "wb") as f:
         f.write(chunk_data)

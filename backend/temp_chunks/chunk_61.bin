@@ -1,0 +1,23 @@
+Distributed systems are a fundamental area of computer science. A distributed system
+consists of multiple independent computers that communicate over a network and
+coordinate their actions to appear as a single coherent system.
+
+In distributed systems, reliability and fault tolerance are critical concerns.
+Failures are expected rather than exceptional. Components may fail independently,
+messages may be delayed or lost, and networks may partition without warning.
+
+Consistency, availability, and partition tolerance form the well-known CAP theorem.
+According to the CAP theorem, a distributed system can only guarantee two of the three
+properties at any given time. Designers must choose trade-offs depending on the use case.
+
+Distributed systems often rely on replication to improve availability and durability.
+Replication introduces complexity in maintaining consistency across replicas.
+Consensus algorithms such as Paxos and Raft are used to ensure agreement among nodes.
+
+Scalability is another major goal of distributed systems. Horizontal scaling allows
+systems to handle increased load by adding more machines rather than upgrading hardware.
+This approach is common in cloud computing platforms and large-scale web services.
+
+Understanding distributed systems requires thinking about concurrency, partial failure,
+and the absence of a global clock. These challenges make distributed systems difficult
+to design, implement, and reason about, but also extremely powerful.

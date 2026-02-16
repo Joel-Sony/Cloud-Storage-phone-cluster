@@ -25,6 +25,8 @@ import com.phonecluster.app.storage.PreferencesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.phonecluster.app.search.SearchEngine
+import com.phonecluster.app.search.SearchResult
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +47,10 @@ fun UserModeScreen(onBackClick: () -> Unit = {}) {
     var uploadProgress by remember { mutableStateOf(0 to 0) } // (uploaded, total)
     var uploadedFileId by remember { mutableStateOf<Int?>(null) }
 
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+
     // File picker launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -55,9 +61,18 @@ fun UserModeScreen(onBackClick: () -> Unit = {}) {
             chunks = emptyList() // Reset chunks when new file selected
             errorMessage = null
             uploadedFileId = null
+
+            scope.launch {
+                try {
+                    SearchEngine.indexFile(context, it)
+                    SearchEngine.search(context, "distributed systems")
+                } catch (e: Exception) {
+                    errorMessage = "Indexing failed: ${e.message}"
+                }
+
+            }
         }
     }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -101,7 +116,101 @@ fun UserModeScreen(onBackClick: () -> Unit = {}) {
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
 
+                        Text(
+                            text = "Search Files",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Type your query…") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Button(
+                            onClick = {
+                                if (searchQuery.isBlank()) return@Button
+
+                                scope.launch {
+                                    isSearching = true
+                                    searchResults = emptyList()
+
+                                    try {
+                                        searchResults =
+                                            SearchEngine.search(context, searchQuery)
+                                    } catch (e: Exception) {
+                                        errorMessage = "Search failed: ${e.message}"
+                                    } finally {
+                                        isSearching = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isSearching
+                        ) {
+                            Text(if (isSearching) "Searching…" else "Search")
+                        }
+                    }
+                }
+
+                if (searchResults.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Search Results",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(searchResults) { result ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = result.fileName,
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Text(
+                                        text = "Score: %.3f".format(result.score),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!isSearching && searchQuery.isNotBlank() && searchResults.isEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No matching files found",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 // Error Message
                 errorMessage?.let { error ->
                     Card(
@@ -229,7 +338,7 @@ fun UserModeScreen(onBackClick: () -> Unit = {}) {
                                     try {
                                         // IMPORTANT: Change this to your PC's IP address
 //                                        val baseUrl = "http://10.124.156.168:8000"
-                                        val baseUrl =  "http://192.168.1.9:8000"
+                                        val baseUrl =  "http://10.0.2.2:8000"
                                         val userId = 1 // TODO: Get from actual user session
 
                                         val fileId = withContext(Dispatchers.IO) {

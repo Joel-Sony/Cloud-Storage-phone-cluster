@@ -1,0 +1,20 @@
+Machine learning is a subfield of artificial intelligence that focuses on building
+systems that can learn from data. Instead of explicitly programming rules, machine
+learning algorithms identify patterns and make predictions based on examples.
+
+Supervised learning is one of the most common machine learning paradigms. In supervised
+learning, models are trained on labeled data, where each input is associated with a
+correct output. Classification and regression are typical supervised learning tasks.
+
+Unsupervised learning deals with unlabeled data. Clustering algorithms such as k-means
+and hierarchical clustering attempt to discover structure within the data. Dimensionality
+reduction techniques like principal component analysis are also widely used.
+
+Deep learning is a subset of machine learning that uses neural networks with many layers.
+Deep learning has achieved state-of-the-art results in computer vision, speech recognition,
+and natural language processing. Training deep learning models often requires large
+datasets and significant computational resources.
+
+Machine learning systems must be evaluated carefully to avoid overfitting and bias.
+Cross-validation, regularization, and proper dataset splits are essential for building
+robust machine learning models that generalize well.
