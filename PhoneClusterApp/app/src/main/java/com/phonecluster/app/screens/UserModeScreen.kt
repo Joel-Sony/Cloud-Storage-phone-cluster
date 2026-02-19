@@ -25,12 +25,27 @@ import com.phonecluster.app.storage.PreferencesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.phonecluster.app.ml.EmbeddingEngine
+import android.util.Log
+import androidx.compose.runtime.LaunchedEffect
+import com.phonecluster.app.ml.SummaryEngine
+import com.phonecluster.app.storage.AppDatabase
+import com.phonecluster.app.storage.FileEntity
+import com.phonecluster.app.utils.FileTextExtractor
+import com.phonecluster.app.ml.OnnxTokenizer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserModeScreen(onBackClick: () -> Unit = {}) {
+fun UserModeScreen(
+    engine: EmbeddingEngine,
+    onBackClick: () -> Unit = {},
+    onSearchClick: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val db = AppDatabase.getDatabase(context)
+    val dao = db.fileDao()
 
     // State variables
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
@@ -87,6 +102,21 @@ fun UserModeScreen(onBackClick: () -> Unit = {}) {
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = { onSearchClick() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text("Semantic Search")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // File Picker Button
                 ElevatedButton(
@@ -229,7 +259,7 @@ fun UserModeScreen(onBackClick: () -> Unit = {}) {
                                     try {
                                         // IMPORTANT: Change this to your PC's IP address
 //                                        val baseUrl = "http://10.124.156.168:8000"
-                                        val baseUrl =  "http://192.168.1.9:8000"
+                                        val baseUrl =  "http://10.0.2.2:8000"
                                         val userId = 1 // TODO: Get from actual user session
 
                                         val fileId = withContext(Dispatchers.IO) {
@@ -244,6 +274,40 @@ fun UserModeScreen(onBackClick: () -> Unit = {}) {
                                         }
 
                                         uploadedFileId = fileId
+                                        // After successful upload → generate embedding & store locally
+                                        withContext(Dispatchers.IO) {
+
+                                            // 1️⃣ Extract text from file
+                                            val fileText = FileTextExtractor.extractText(context, selectedFileUri!!)
+                                            Log.d("PDF_DEBUG", "Extracted text:\n$fileText")
+                                            // 2️⃣ Generate summary
+                                            val summary = SummaryEngine.summarize(fileText, 0.4f)
+
+                                            // 3️⃣ Tokenize using ONNX tokenizer
+                                            val tokenizer = OnnxTokenizer(context)
+
+                                            val (inputIds, attentionMask, tokenTypeIds) = tokenizer.tokenize(summary)
+
+                                            // 4️⃣ Generate embedding
+                                            val embedding = engine.generateEmbedding(
+                                                inputIds,
+                                                attentionMask,
+                                                tokenTypeIds
+                                            )
+                                            Log.d("ROOM_TEST", "Inserting into Room DB")
+                                            // 5️⃣ Store in Room
+                                            dao.insert(
+                                                FileEntity(
+                                                    serverFileId = fileId,
+                                                    fileName = info.name,
+                                                    fileType = info.mimeType ?: "unknown",
+                                                    fileDate = System.currentTimeMillis(),
+                                                    fileSize = info.size,
+                                                    embedding = embedding
+                                                )
+                                            )
+                                        }
+
                                     } catch (e: Exception) {
                                         errorMessage = "Upload failed: ${e.message}"
                                         e.printStackTrace()

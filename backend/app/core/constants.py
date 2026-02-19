@@ -1,3 +1,4 @@
 from pathlib import Path
 
-TEMP_CHUNK_DIR = Path("backend/temp_chunks")
+BASE_DIR = Path(__file__).resolve().parents[2]  # points to /backend
+TEMP_CHUNK_DIR = BASE_DIR / "temp_chunks"   

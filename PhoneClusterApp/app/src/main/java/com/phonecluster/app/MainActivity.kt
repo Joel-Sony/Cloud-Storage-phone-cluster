@@ -8,7 +8,9 @@ import com.phonecluster.app.screens.ModeSelectionScreen
 import com.phonecluster.app.screens.RegistrationScreen
 import com.phonecluster.app.screens.UserModeScreen
 import com.phonecluster.app.screens.StorageModeScreen
+import com.phonecluster.app.screens.SearchScreen
 import com.phonecluster.app.ui.theme.CloudStorageAppTheme
+import com.phonecluster.app.ml.EmbeddingEngine
 
 // Navigation destinations
 sealed class Screen {
@@ -16,25 +18,31 @@ sealed class Screen {
     object ModeSelection : Screen()
     object UserMode : Screen()
     object StorageMode : Screen()
+    object Search : Screen()
 }
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
+            val engine = remember { EmbeddingEngine(this) }
+
             CloudStorageAppTheme {
-                AppNavigation()
+                AppNavigation(engine)
             }
         }
     }
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(engine: EmbeddingEngine) {
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Registration) }
 
     when (currentScreen) {
+
         Screen.Registration -> {
             RegistrationScreen(
                 onRegistered = {
@@ -56,8 +64,12 @@ fun AppNavigation() {
 
         Screen.UserMode -> {
             UserModeScreen(
+                engine = engine,
                 onBackClick = {
                     currentScreen = Screen.ModeSelection
+                },
+                onSearchClick = {
+                    currentScreen = Screen.Search
                 }
             )
         }
@@ -66,6 +78,15 @@ fun AppNavigation() {
             StorageModeScreen(
                 onBackClick = {
                     currentScreen = Screen.ModeSelection
+                }
+            )
+        }
+
+        Screen.Search -> {
+            SearchScreen(
+                engine = engine,
+                onBackClick = {
+                    currentScreen = Screen.UserMode
                 }
             )
         }

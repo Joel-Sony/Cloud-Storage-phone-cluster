@@ -1,11 +1,13 @@
 from sqlalchemy.orm import Session
 from app.models.device import Device
 from datetime import datetime
+from typing import Optional
 
 def handle_heartbeat(
         db: Session, 
         device_id: int,
-        available_storage: int | None = None,
+        available_storage: Optional[int]
+,
 ):
     device = (
         db.query(Device)

@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-kapt")
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
@@ -39,7 +41,21 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/LICENSE",
+                "META-INF/NOTICE"
+            )
+        }
+    }
+
 }
+
+kapt {
+    correctErrorTypes = true
+}
+
 
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -58,6 +74,14 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation("androidx.compose.material:material-icons-extended")
+
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+    implementation("androidx.room:room-runtime:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    implementation("ai.djl.huggingface:tokenizers:0.24.0")
     implementation("androidx.compose.material:material-icons-extended")
 
     // Retrofit - REST API client

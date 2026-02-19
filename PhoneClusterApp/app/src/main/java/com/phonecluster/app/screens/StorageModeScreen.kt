@@ -25,12 +25,12 @@ fun StorageModeScreen(onBackClick: () -> Unit = {}) {
         if (deviceId != -1) {
             HeartbeatManager.start(
 //              serverBaseUrl = "http://10.124.156.168:8000",
-                serverBaseUrl = "http://192.168.1.9:8000",
+                serverBaseUrl = "http://10.0.2.2:8000",
                 deviceId = deviceId
             )
             WebSocketManager.connect(
                 context = context,
-                serverIp = "192.168.1.9"
+                serverIp = "10.0.2.2"
             )
         }
     }
