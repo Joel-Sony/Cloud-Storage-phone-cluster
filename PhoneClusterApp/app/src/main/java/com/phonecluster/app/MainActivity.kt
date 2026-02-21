@@ -11,6 +11,7 @@ import com.phonecluster.app.screens.StorageModeScreen
 import com.phonecluster.app.screens.SearchScreen
 import com.phonecluster.app.ui.theme.CloudStorageAppTheme
 import com.phonecluster.app.ml.EmbeddingEngine
+import com.phonecluster.app.screens.FileBrowserScreen
 
 // Navigation destinations
 sealed class Screen {
@@ -19,6 +20,7 @@ sealed class Screen {
     object UserMode : Screen()
     object StorageMode : Screen()
     object Search : Screen()
+    object FileBrowser : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -70,6 +72,9 @@ fun AppNavigation(engine: EmbeddingEngine) {
                 },
                 onSearchClick = {
                     currentScreen = Screen.Search
+                },
+                onBrowseClick = {
+                    currentScreen = Screen.FileBrowser
                 }
             )
         }
@@ -85,6 +90,14 @@ fun AppNavigation(engine: EmbeddingEngine) {
         Screen.Search -> {
             SearchScreen(
                 engine = engine,
+                onBackClick = {
+                    currentScreen = Screen.UserMode
+                }
+            )
+        }
+
+        Screen.FileBrowser -> {
+            FileBrowserScreen(
                 onBackClick = {
                     currentScreen = Screen.UserMode
                 }

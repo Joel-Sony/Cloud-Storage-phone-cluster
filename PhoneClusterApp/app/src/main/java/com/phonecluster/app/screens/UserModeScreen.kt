@@ -39,7 +39,8 @@ import com.phonecluster.app.ml.OnnxTokenizer
 fun UserModeScreen(
     engine: EmbeddingEngine,
     onBackClick: () -> Unit = {},
-    onSearchClick: () -> Unit
+    onSearchClick: () -> Unit,
+    onBrowseClick: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -115,7 +116,16 @@ fun UserModeScreen(
                 ) {
                     Text("Semantic Search")
                 }
+                Spacer(modifier = Modifier.height(12.dp))
 
+                Button(
+                    onClick = { onBrowseClick() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Text("Browse My Files")
+                }
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // File Picker Button

@@ -83,6 +83,7 @@ dependencies {
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("ai.djl.huggingface:tokenizers:0.24.0")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
 
     // Retrofit - REST API client
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
