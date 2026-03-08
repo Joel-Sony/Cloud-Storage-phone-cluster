@@ -2,7 +2,6 @@ package com.phonecluster.app.utils
 
 import android.content.Context
 import android.net.Uri
-import java.io.InputStream
 
 data class FileChunk(
     val index: Int,
@@ -31,11 +30,10 @@ data class ChunkedFileInfo(
 )
 
 object FileChunker {
-    private const val CHUNK_SIZE = 10 * 1024 * 1024 // 10 MB in bytes (changed from 10KB)
 
-    /**
-     * Get file information without reading the entire file
-     */
+    private const val CHUNK_SIZE = 40 * 1024
+    private const val ENCRYPTION_PASSWORD = "mypassword123"
+
     fun getFileInfo(context: Context, fileUri: Uri): ChunkedFileInfo? {
         return try {
             val contentResolver = context.contentResolver
@@ -43,6 +41,7 @@ object FileChunker {
 
             cursor?.use {
                 if (it.moveToFirst()) {
+
                     val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                     val sizeIndex = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
 
@@ -57,43 +56,56 @@ object FileChunker {
                     null
                 }
             }
+
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    /**
-     * Chunk a file into 10 MB pieces
-     * Returns a list of FileChunk objects
-     */
     fun chunkFile(
         context: Context,
         fileUri: Uri,
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): List<FileChunk> {
+
         val chunks = mutableListOf<FileChunk>()
 
         try {
-            val inputStream: InputStream? = context.contentResolver.openInputStream(fileUri)
 
-            inputStream?.use { stream ->
-                var chunkIndex = 0
-                val buffer = ByteArray(CHUNK_SIZE)
+            val originalBytes = FileHelper.readAllBytes(context, fileUri)
 
-                while (true) {
-                    val bytesRead = stream.read(buffer)
+            // Encrypt WITHOUT AAD
+            val encryptedBytes = AsconFileCrypto.encryptFile(
+                plaintext = originalBytes,
+                password = ENCRYPTION_PASSWORD,
+                aad = byteArrayOf()
+            )
 
-                    if (bytesRead <= 0) break
+            val totalChunks = (encryptedBytes.size + CHUNK_SIZE - 1) / CHUNK_SIZE
 
-                    // Create chunk with only the bytes that were actually read
-                    val chunkData = buffer.copyOf(bytesRead)
-                    chunks.add(FileChunk(chunkIndex, chunkData, bytesRead))
+            var chunkIndex = 0
+            var offset = 0
 
-                    chunkIndex++
-                    onProgress(chunkIndex, chunks.size)
-                }
+            while (offset < encryptedBytes.size) {
+
+                val end = minOf(offset + CHUNK_SIZE, encryptedBytes.size)
+                val chunkData = encryptedBytes.copyOfRange(offset, end)
+
+                chunks.add(
+                    FileChunk(
+                        index = chunkIndex,
+                        data = chunkData,
+                        size = chunkData.size
+                    )
+                )
+
+                chunkIndex++
+                offset = end
+
+                onProgress(chunkIndex, totalChunks)
             }
+
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -101,9 +113,6 @@ object FileChunker {
         return chunks
     }
 
-    /**
-     * Format file size for display
-     */
     fun formatFileSize(bytes: Long): String {
         return when {
             bytes < 1024 -> "$bytes B"

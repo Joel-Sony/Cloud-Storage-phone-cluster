@@ -1,16 +1,19 @@
 package com.phonecluster.app.utils
+
 import com.phonecluster.app.core.SERVER_BASE_URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlin.code
 
 class FileRepository {
 
     private val client = OkHttpClient()
 
+    companion object {
+        private const val ENCRYPTION_PASSWORD = "mypassword123"
+    }
 
     suspend fun downloadFile(fileId: Long) = withContext(Dispatchers.IO) {
 
@@ -25,10 +28,16 @@ class FileRepository {
             throw RuntimeException("Download failed: ${response.code}")
         }
 
-        val bytes = response.body?.bytes()
+        val encryptedBytes = response.body?.bytes()
             ?: throw RuntimeException("Empty response")
 
-        saveFileLocally(fileId, bytes)
+        val decryptedBytes = AsconFileCrypto.decryptFile(
+            encryptedFile = encryptedBytes,
+            password = ENCRYPTION_PASSWORD,
+            aad = byteArrayOf()
+        )
+
+        saveFileLocally(fileId, decryptedBytes)
     }
 
     private fun saveFileLocally(fileId: Long, data: ByteArray) {
