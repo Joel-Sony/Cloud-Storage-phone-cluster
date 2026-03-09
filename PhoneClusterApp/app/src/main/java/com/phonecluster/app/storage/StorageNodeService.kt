@@ -10,6 +10,7 @@ import com.phonecluster.app.core.SERVER_BASE_URL
 import com.phonecluster.app.core.SERVER_IP
 import com.phonecluster.app.utils.heartbeat.HeartbeatManager
 import com.phonecluster.app.utils.websocket.WebSocketManager
+import android.content.pm.ServiceInfo
 
 class StorageNodeService : Service() {
 
@@ -32,7 +33,11 @@ class StorageNodeService : Service() {
             .setOngoing(true)
             .build()
 
-        startForeground(NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
 
         if (deviceId != -1) {
             HeartbeatManager.start(
