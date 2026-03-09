@@ -38,13 +38,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phonecluster.app.ml.EmbeddingEngine
-<<<<<<< HEAD
 import android.util.Log
 import androidx.compose.runtime.LaunchedEffect
 import com.phonecluster.app.core.SERVER_BASE_URL
-=======
 import com.phonecluster.app.ml.OnnxTokenizer
->>>>>>> ui-implementation
 import com.phonecluster.app.ml.SummaryEngine
 import com.phonecluster.app.storage.AppDatabase
 import com.phonecluster.app.storage.FileEntity
@@ -56,7 +53,6 @@ import com.phonecluster.app.utils.FileTextExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.util.Log
 
 // ─── Color Tokens ─────────────────────────────────────────────────────────────
 
@@ -135,7 +131,7 @@ fun UserModeScreen(
                     totalBytes = 64L * 1024 * 1024 * 1024
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                ConnectedDevicesCard(nodeCount = 4)
+                ConnectedDevicesCard(nodeCount = 1)
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
@@ -281,18 +277,12 @@ fun UserModeScreen(
                                     uploadedFileId = null
                                     uploadProgress = 0 to chunks.size
                                     try {
-<<<<<<< HEAD
                                         // IMPORTANT: Change this to your PC's IP address
 //                                        val baseUrl = "http://10.124.156.168:8000"
                                         val baseUrl = SERVER_BASE_URL
                                         val userId = 1 // TODO: Get from actual user session
 
                                         val fileId = withContext(Dispatchers.IO) {
-=======
-                                        val baseUrl = "http://10.70.222.130:8000"
-                                        val userId  = 1
-                                        val fileId  = withContext(Dispatchers.IO) {
->>>>>>> ui-implementation
                                             ChunkUploader.uploadAll(
                                                 baseUrl  = baseUrl,
                                                 userId   = userId,
