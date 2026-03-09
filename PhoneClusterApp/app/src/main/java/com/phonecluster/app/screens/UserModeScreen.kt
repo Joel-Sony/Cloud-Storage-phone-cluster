@@ -3,37 +3,77 @@ package com.phonecluster.app.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.phonecluster.app.utils.FileChunker
-import com.phonecluster.app.utils.FileChunk
-import com.phonecluster.app.utils.ChunkedFileInfo
-import com.phonecluster.app.utils.ChunkUploader
-import com.phonecluster.app.storage.PreferencesManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import androidx.compose.ui.unit.sp
 import com.phonecluster.app.ml.EmbeddingEngine
+<<<<<<< HEAD
 import android.util.Log
 import androidx.compose.runtime.LaunchedEffect
 import com.phonecluster.app.core.SERVER_BASE_URL
+=======
+import com.phonecluster.app.ml.OnnxTokenizer
+>>>>>>> ui-implementation
 import com.phonecluster.app.ml.SummaryEngine
 import com.phonecluster.app.storage.AppDatabase
 import com.phonecluster.app.storage.FileEntity
+import com.phonecluster.app.utils.ChunkUploader
+import com.phonecluster.app.utils.ChunkedFileInfo
+import com.phonecluster.app.utils.FileChunk
+import com.phonecluster.app.utils.FileChunker
 import com.phonecluster.app.utils.FileTextExtractor
-import com.phonecluster.app.ml.OnnxTokenizer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import android.util.Log
+
+// ─── Color Tokens ─────────────────────────────────────────────────────────────
+
+private val BgDeep        = Color(0xFF020617)
+private val BgCard        = Color(0xFF0D1424)
+private val BgCardAlt     = Color(0xFF0A1120)
+private val BorderSubtle  = Color(0xFF1E293B)
+private val AccentCyan    = Color(0xFF22D3EE)
+private val AccentPurple  = Color(0xFFA78BFA)
+private val AccentGreen   = Color(0xFF34D399)
+private val AccentAmber   = Color(0xFFFBBF24)
+private val TextPrimary   = Color(0xFFF1F5F9)
+private val TextSecondary = Color(0xFF94A3B8)
+private val TextMuted     = Color(0xFF475569)
+private val ErrorRed      = Color(0xFFEF4444)
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,187 +84,161 @@ fun UserModeScreen(
     onBrowseClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val scope   = rememberCoroutineScope()
 
-    val db = AppDatabase.getDatabase(context)
+    val db  = AppDatabase.getDatabase(context)
     val dao = db.fileDao()
 
-    // State variables
-    var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
-    var fileInfo by remember { mutableStateOf<ChunkedFileInfo?>(null) }
-    var chunks by remember { mutableStateOf<List<FileChunk>>(emptyList()) }
-    var isChunking by remember { mutableStateOf(false) }
-    var chunkingProgress by remember { mutableStateOf(0 to 0) } // (current, total)
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    // ── State (unchanged) ────────────────────────────────────────────────────
+    var selectedFileUri  by remember { mutableStateOf<Uri?>(null) }
+    var fileInfo         by remember { mutableStateOf<ChunkedFileInfo?>(null) }
+    var chunks           by remember { mutableStateOf<List<FileChunk>>(emptyList()) }
+    var isChunking       by remember { mutableStateOf(false) }
+    var chunkingProgress by remember { mutableStateOf(0 to 0) }
+    var errorMessage     by remember { mutableStateOf<String?>(null) }
+    var isUploading      by remember { mutableStateOf(false) }
+    var uploadProgress   by remember { mutableStateOf(0 to 0) }
+    var uploadedFileId   by remember { mutableStateOf<Int?>(null) }
 
-    // Upload state
-    var isUploading by remember { mutableStateOf(false) }
-    var uploadProgress by remember { mutableStateOf(0 to 0) } // (uploaded, total)
-    var uploadedFileId by remember { mutableStateOf<Int?>(null) }
-
-    // File picker launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
             selectedFileUri = it
-            fileInfo = FileChunker.getFileInfo(context, it)
-            chunks = emptyList() // Reset chunks when new file selected
-            errorMessage = null
-            uploadedFileId = null
+            fileInfo        = FileChunker.getFileInfo(context, it)
+            chunks          = emptyList()
+            errorMessage    = null
+            uploadedFileId  = null
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("User Mode") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BgDeep)
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header
-                Text(
-                    text = "File Upload & Management",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 16.dp)
+
+            // ── Top Bar ──────────────────────────────────────────────────────
+            item {
+                DashboardTopBar(onBackClick = onBackClick)
+            }
+
+            // ── Stats Row ────────────────────────────────────────────────────
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                StorageStatsCard(
+                    usedBytes  = fileInfo?.size ?: 0L,
+                    totalBytes = 64L * 1024 * 1024 * 1024
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+                ConnectedDevicesCard(nodeCount = 4)
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
-                Button(
-                    onClick = { onSearchClick() },
+            // ── Quick Actions ────────────────────────────────────────────────
+            item {
+                Text(
+                    text = "Quick Actions",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    letterSpacing = 0.8.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    QuickActionTile(
+                        icon     = Icons.Outlined.CloudUpload,
+                        label    = "Upload File",
+                        sublabel = "Add new files",
+                        color    = AccentCyan,
+                        modifier = Modifier.weight(1f),
+                        onClick  = { filePickerLauncher.launch("*/*") }
                     )
-                ) {
-                    Text("Semantic Search")
+                    QuickActionTile(
+                        icon     = Icons.Outlined.Search,
+                        label    = "Search Files",
+                        sublabel = "Find content",
+                        color    = AccentPurple,
+                        modifier = Modifier.weight(1f),
+                        onClick  = onSearchClick
+                    )
+                    QuickActionTile(
+                        icon     = Icons.Outlined.PhoneAndroid,
+                        label    = "Browse Files",
+                        sublabel = "Manage nodes",
+                        color    = AccentGreen,
+                        modifier = Modifier.weight(1f),
+                        onClick  = onBrowseClick
+                    )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
-                Button(
-                    onClick = { onBrowseClick() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                ) {
-                    Text("Browse My Files")
+            // ── Status messages ───────────────────────────────────────────────
+            errorMessage?.let { error ->
+                item {
+                    StatusBanner(
+                        text    = error,
+                        isError = true,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+            }
 
-                // File Picker Button
-                ElevatedButton(
-                    onClick = { filePickerLauncher.launch("*/*") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    Icon(Icons.Default.Upload, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Select File")
+            uploadedFileId?.let { id ->
+                item {
+                    StatusBanner(
+                        text    = "File uploaded successfully · ID $id",
+                        isError = false,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Error Message
-                errorMessage?.let { error ->
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = error,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                // Success Message
-                uploadedFileId?.let { id ->
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "✅ File uploaded successfully!\nFile ID: $id",
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
+            // ── Selected file card ────────────────────────────────────────────
+            fileInfo?.let { info ->
+                item {
+                    Text(
+                        text = "Selected File",
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        letterSpacing = 0.8.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    SelectedFileCard(info = info, modifier = Modifier.padding(horizontal = 16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // File Info Card
-                fileInfo?.let { info ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Default.Description,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "File Information",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            InfoRow("Name:", info.name)
-                            InfoRow("Size:", FileChunker.formatFileSize(info.size))
-                            InfoRow("Type:", info.mimeType ?: "Unknown")
-                            InfoRow("Total Chunks:", "${info.totalChunks} (10KB each)")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Chunk Button
-                    Button(
-                        onClick = {
+                // Chunk button
+                item {
+                    DarkActionButton(
+                        label     = if (isChunking) "Chunking…" else "Prepare Chunks",
+                        icon      = Icons.Outlined.Build,
+                        accentColor = AccentAmber,
+                        enabled   = !isChunking && chunks.isEmpty(),
+                        modifier  = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        onClick   = {
                             scope.launch {
-                                isChunking = true
+                                isChunking   = true
                                 errorMessage = null
-
                                 try {
                                     chunks = withContext(Dispatchers.IO) {
-                                        FileChunker.chunkFile(
-                                            context,
-                                            selectedFileUri!!
-                                        ) { current, total ->
-                                            chunkingProgress = current to total
+                                        FileChunker.chunkFile(context, selectedFileUri!!) { cur, tot ->
+                                            chunkingProgress = cur to tot
                                         }
                                     }
                                 } catch (e: Exception) {
@@ -234,91 +248,80 @@ fun UserModeScreen(
                                     isChunking = false
                                 }
                             }
-                        },
-                        enabled = !isChunking && chunks.isEmpty(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text(if (isChunking) "Chunking..." else "Chunk File")
-                    }
+                        }
+                    )
 
-                    // Chunking Progress
                     if (isChunking) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "Processing chunk ${chunkingProgress.first}...",
-                            style = MaterialTheme.typography.bodySmall
+                        Spacer(modifier = Modifier.height(10.dp))
+                        ProgressRow(
+                            label    = "Processing chunk ${chunkingProgress.first}…",
+                            progress = null,
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
 
-                    // Upload Button (only show when chunks are ready)
-                    if (chunks.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
-                        Button(
-                            onClick = {
+                // Upload button
+                if (chunks.isNotEmpty()) {
+                    item {
+                        DarkActionButton(
+                            label       = if (isUploading) "Uploading…" else "Upload to Cluster",
+                            icon        = Icons.Outlined.CloudUpload,
+                            accentColor = AccentCyan,
+                            enabled     = !isUploading,
+                            modifier    = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            onClick     = {
                                 scope.launch {
-                                    isUploading = true
-                                    errorMessage = null
+                                    isUploading    = true
+                                    errorMessage   = null
                                     uploadedFileId = null
                                     uploadProgress = 0 to chunks.size
-
                                     try {
+<<<<<<< HEAD
                                         // IMPORTANT: Change this to your PC's IP address
 //                                        val baseUrl = "http://10.124.156.168:8000"
                                         val baseUrl = SERVER_BASE_URL
                                         val userId = 1 // TODO: Get from actual user session
 
                                         val fileId = withContext(Dispatchers.IO) {
+=======
+                                        val baseUrl = "http://10.70.222.130:8000"
+                                        val userId  = 1
+                                        val fileId  = withContext(Dispatchers.IO) {
+>>>>>>> ui-implementation
                                             ChunkUploader.uploadAll(
-                                                baseUrl = baseUrl,
-                                                userId = userId,
+                                                baseUrl  = baseUrl,
+                                                userId   = userId,
                                                 fileInfo = info,
-                                                chunks = chunks
+                                                chunks   = chunks
                                             ) { uploaded, total ->
                                                 uploadProgress = uploaded to total
                                             }
                                         }
-
                                         uploadedFileId = fileId
-                                        // After successful upload → generate embedding & store locally
                                         withContext(Dispatchers.IO) {
-
-                                            // 1️⃣ Extract text from file
-                                            val fileText = FileTextExtractor.extractText(context, selectedFileUri!!)
+                                            val fileText  = FileTextExtractor.extractText(context, selectedFileUri!!)
                                             Log.d("PDF_DEBUG", "Extracted text:\n$fileText")
-                                            // 2️⃣ Generate summary
-                                            val summary = SummaryEngine.summarize(fileText, 0.4f)
-
-                                            // 3️⃣ Tokenize using ONNX tokenizer
+                                            val summary   = SummaryEngine.summarize(fileText, 0.4f)
                                             val tokenizer = OnnxTokenizer(context)
-
                                             val (inputIds, attentionMask, tokenTypeIds) = tokenizer.tokenize(summary)
-
-                                            // 4️⃣ Generate embedding
-                                            val embedding = engine.generateEmbedding(
-                                                inputIds,
-                                                attentionMask,
-                                                tokenTypeIds
-                                            )
+                                            val embedding = engine.generateEmbedding(inputIds, attentionMask, tokenTypeIds)
                                             Log.d("ROOM_TEST", "Inserting into Room DB")
-                                            // 5️⃣ Store in Room
                                             dao.insert(
                                                 FileEntity(
                                                     serverFileId = fileId,
-                                                    fileName = info.name,
-                                                    fileType = info.mimeType ?: "unknown",
-                                                    fileDate = System.currentTimeMillis(),
-                                                    fileSize = info.size,
-                                                    embedding = embedding
+                                                    fileName     = info.name,
+                                                    fileType     = info.mimeType ?: "unknown",
+                                                    fileDate     = System.currentTimeMillis(),
+                                                    fileSize     = info.size,
+                                                    embedding    = embedding
                                                 )
                                             )
                                         }
-
                                     } catch (e: Exception) {
                                         errorMessage = "Upload failed: ${e.message}"
                                         e.printStackTrace()
@@ -326,122 +329,727 @@ fun UserModeScreen(
                                         isUploading = false
                                     }
                                 }
-                            },
-                            enabled = !isUploading,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiary
-                            )
-                        ) {
-                            Icon(Icons.Default.CloudUpload, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isUploading) "Uploading..." else "Upload to Server")
-                        }
+                            }
+                        )
 
-                        // Upload Progress
                         if (isUploading) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            LinearProgressIndicator(
+                            Spacer(modifier = Modifier.height(10.dp))
+                            ProgressRow(
+                                label    = "Uploaded ${uploadProgress.first} / ${uploadProgress.second} chunks",
                                 progress = uploadProgress.first.toFloat() / uploadProgress.second.toFloat(),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                text = "Uploaded ${uploadProgress.first}/${uploadProgress.second} chunks",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface
+                                modifier = Modifier.padding(horizontal = 16.dp)
                             )
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Chunks List
-                if (chunks.isNotEmpty()) {
-                    Text(
-                        text = "Chunks (${chunks.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.align(Alignment.Start)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+            // ── Chunk list ────────────────────────────────────────────────────
+            if (chunks.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(chunks) { chunk ->
-                            ChunkCard(chunk)
+                        Text(
+                            text = "CHUNKS",
+                            fontSize = 12.sp,
+                            color = TextMuted,
+                            letterSpacing = 0.8.sp
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(AccentCyan.copy(alpha = 0.12f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "${chunks.size}",
+                                fontSize = 11.sp,
+                                color = AccentCyan,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                items(chunks) { chunk ->
+                    ChunkCard(
+                        chunk    = chunk,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
+                    )
                 }
             }
         }
     }
 }
 
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.width(100.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-    }
-}
+// ─── Top Bar ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ChunkCard(chunk: FileChunk) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
+private fun DashboardTopBar(onBackClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF060E1E), BgDeep)
+                )
+            )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(start = 8.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "Chunk #${chunk.index}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                Text(
-                    text = FileChunker.formatFileSize(chunk.size.toLong()),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBackIosNew,
+                    contentDescription = "Back",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(18.dp)
                 )
             }
 
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.primary
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Ready",
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.labelSmall
+                    text = "PocketCluster",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    letterSpacing = (-0.3).sp
+                )
+                Text(
+                    text = "Decentralized Personal Storage",
+                    fontSize = 11.sp,
+                    color = TextMuted
+                )
+            }
+
+            // Cluster Online badge
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(AccentGreen.copy(alpha = 0.1f))
+                    .border(1.dp, AccentGreen.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(AccentGreen)
+                )
+                Text(
+                    text = "Cluster Online",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AccentGreen
+                )
+            }
+        }
+
+        // Cyan hairline divider
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            AccentCyan.copy(alpha = 0.35f),
+                            AccentCyan.copy(alpha = 0.6f),
+                            AccentCyan.copy(alpha = 0.35f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+    }
+}
+
+// ─── Storage Stats Card ───────────────────────────────────────────────────────
+
+@Composable
+private fun StorageStatsCard(usedBytes: Long, totalBytes: Long) {
+    val progress = (usedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+
+    val animatedProgress by animateFloatAsState(
+        targetValue  = progress,
+        animationSpec = tween(1000, easing = EaseOutCubic),
+        label        = "storageProgress"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(AccentCyan.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Storage,
+                        contentDescription = null,
+                        tint = AccentCyan,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Text(
+                    text = "Total Storage",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // used / total
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = formatSize(usedBytes),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentCyan,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "/ ${formatSize(totalBytes)}",
+                        fontSize = 13.sp,
+                        color = TextMuted,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Progress track
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(BorderSubtle)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animatedProgress)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(AccentCyan, AccentCyan.copy(alpha = 0.6f))
+                            )
+                        )
                 )
             }
         }
     }
+}
+
+// ─── Connected Devices Card ───────────────────────────────────────────────────
+
+@Composable
+private fun ConnectedDevicesCard(nodeCount: Int) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(AccentPurple.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Hub,
+                    contentDescription = null,
+                    tint = AccentPurple,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = "Connected Devices",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Node count
+            Text(
+                text = "$nodeCount",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                fontFamily = FontFamily.Monospace
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Active Nodes badge
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(AccentGreen.copy(alpha = 0.1f))
+                    .border(1.dp, AccentGreen.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 9.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(AccentGreen)
+                )
+                Text(
+                    text = "Active Nodes",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AccentGreen
+                )
+            }
+        }
+    }
+}
+
+// ─── Quick Action Tiles ───────────────────────────────────────────────────────
+
+@Composable
+private fun QuickActionTile(
+    icon: ImageVector,
+    label: String,
+    sublabel: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue  = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        label        = "tileScale"
+    )
+    val bgAlpha by animateFloatAsState(
+        targetValue  = if (isPressed) 0.18f else 0.08f,
+        animationSpec = tween(100),
+        label        = "tileBg"
+    )
+
+    Card(
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            color.copy(alpha = if (isPressed) 0.4f else 0.15f)
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(color.copy(alpha = bgAlpha), Color.Transparent)
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp, horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(color.copy(alpha = 0.12f))
+                        .border(1.dp, color.copy(alpha = 0.2f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = color,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Text(
+                    text = label,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    lineHeight = 15.sp
+                )
+
+                Text(
+                    text = sublabel,
+                    fontSize = 10.sp,
+                    color = TextMuted,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+// ─── Selected File Card ───────────────────────────────────────────────────────
+
+@Composable
+private fun SelectedFileCard(info: ChunkedFileInfo, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(
+                listOf(AccentCyan.copy(alpha = 0.4f), BorderSubtle, BorderSubtle)
+            )
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(AccentCyan.copy(alpha = 0.05f), Color.Transparent)
+                    )
+                )
+                .padding(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(AccentCyan.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.InsertDriveFile,
+                        contentDescription = null,
+                        tint = AccentCyan,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = info.name,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "${formatSize(info.size)}  ·  ${info.mimeType ?: "Unknown type"}",
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = BorderSubtle, thickness = 1.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MetaItem(label = "Chunks", value = "${info.totalChunks}")
+                MetaItem(label = "Chunk size", value = "10 KB")
+                MetaItem(label = "Total size", value = formatSize(info.size))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetaItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+            color = TextPrimary, fontFamily = FontFamily.Monospace)
+        Text(text = label, fontSize = 10.sp, color = TextMuted)
+    }
+}
+
+// ─── Dark Action Button ───────────────────────────────────────────────────────
+
+@Composable
+private fun DarkActionButton(
+    label: String,
+    icon: ImageVector,
+    accentColor: Color,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue  = if (isPressed && enabled) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        label        = "btnScale"
+    )
+
+    Box(
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (enabled)
+                    Brush.horizontalGradient(listOf(accentColor.copy(0.15f), accentColor.copy(0.07f)))
+                else
+                    Brush.horizontalGradient(listOf(BgCard, BgCard))
+            )
+            .border(
+                1.dp,
+                if (enabled) accentColor.copy(alpha = if (isPressed) 0.7f else 0.35f)
+                else BorderSubtle,
+                RoundedCornerShape(12.dp)
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication        = null,
+                enabled           = enabled
+            ) { onClick() }
+            .padding(vertical = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (enabled) accentColor else TextMuted,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (enabled) TextPrimary else TextMuted
+            )
+        }
+    }
+}
+
+// ─── Progress Row ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun ProgressRow(label: String, progress: Float?, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(text = label, fontSize = 11.sp, color = TextSecondary)
+        Spacer(modifier = Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(BorderSubtle)
+        ) {
+            if (progress != null) {
+                val animProg by animateFloatAsState(
+                    targetValue = progress,
+                    animationSpec = tween(300),
+                    label = "prog"
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animProg)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(
+                            Brush.horizontalGradient(listOf(AccentCyan, AccentCyan.copy(0.6f)))
+                        )
+                )
+            } else {
+                // Indeterminate shimmer
+                val inf = rememberInfiniteTransition(label = "shimmer")
+                val x by inf.animateFloat(
+                    initialValue  = -1f,
+                    targetValue   = 2f,
+                    animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing)),
+                    label         = "shimX"
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.35f)
+                        .fillMaxHeight()
+                        .graphicsLayer { translationX = x * 300 }
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color.Transparent, AccentCyan, Color.Transparent)
+                            )
+                        )
+                )
+            }
+        }
+    }
+}
+
+// ─── Status Banner ────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatusBanner(text: String, isError: Boolean, modifier: Modifier = Modifier) {
+    val color = if (isError) ErrorRed else AccentGreen
+    val icon  = if (isError) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.08f))
+            .border(1.dp, color.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        Text(text = text, fontSize = 13.sp, color = color, modifier = Modifier.weight(1f))
+    }
+}
+
+// ─── Chunk Card ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun ChunkCard(chunk: FileChunk, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(AccentCyan.copy(alpha = 0.08f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "${chunk.index}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentCyan,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = "Chunk #${chunk.index}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = FileChunker.formatFileSize(chunk.size.toLong()),
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(AccentGreen.copy(alpha = 0.1f))
+                    .border(1.dp, AccentGreen.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 10.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = "Ready",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AccentGreen
+                )
+            }
+        }
+    }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+private fun formatSize(bytes: Long): String = when {
+    bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L     -> "%.1f MB".format(bytes / 1_048_576.0)
+    bytes >= 1_024L         -> "%.1f KB".format(bytes / 1_024.0)
+    else                    -> "$bytes B"
 }
