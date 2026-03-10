@@ -83,7 +83,7 @@ CREATE TABLE chunk_replication (
     chunk_id INT NOT NULL,
     device_id INT NOT NULL,
 
-    replica_status ENUM('REPLICATING', 'ACTIVE', 'LOST')
+    replica_status ENUM('REPLICATING', 'ACTIVE', 'LOST','FAILED')
         NOT NULL DEFAULT 'REPLICATING',
 
     CONSTRAINT fk_chunk_replication_chunk

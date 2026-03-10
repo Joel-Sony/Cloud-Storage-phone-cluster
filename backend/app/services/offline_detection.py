@@ -23,19 +23,23 @@ def mark_offline_devices(db: Session):
 
         device.status = "OFFLINE"
 
-        # mark all replicas on that device as LOST
+        # mark all replicas on that device as LOST or FAILED
         replicas = (
             db.query(ChunkReplication)
             .filter(
                 ChunkReplication.device_id == device.device_id,
-                ChunkReplication.replica_status == "ACTIVE"
+                ChunkReplication.replica_status.in_(["ACTIVE", "REPLICATING"])
             )
             .all()
         )
 
         for r in replicas:
-            print(f"Replica lost: chunk {r.chunk_id} on device {device.device_id}")
-            r.replica_status = "LOST"
+            if r.replica_status == "ACTIVE":
+                print(f"Replica lost: chunk {r.chunk_id} on device {device.device_id}")
+                r.replica_status = "LOST"
+            elif r.replica_status == "REPLICATING":
+                print(f"Replication failed (device offline): chunk {r.chunk_id} on device {device.device_id}")
+                r.replica_status = "FAILED"
 
         # close websocket if still connected
         manager.disconnect(device.device_id)
