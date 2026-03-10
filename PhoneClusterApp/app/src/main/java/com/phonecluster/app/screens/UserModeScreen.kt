@@ -53,7 +53,9 @@ import com.phonecluster.app.utils.FileTextExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
+import com.phonecluster.app.utils.ClusterStatusResponse
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 // ─── Color Tokens ─────────────────────────────────────────────────────────────
 
 private val BgDeep        = Color(0xFF020617)
@@ -95,6 +97,57 @@ fun UserModeScreen(
     var isUploading      by remember { mutableStateOf(false) }
     var uploadProgress   by remember { mutableStateOf(0 to 0) }
     var uploadedFileId   by remember { mutableStateOf<Int?>(null) }
+    var clusterStatus by remember { mutableStateOf<ClusterStatusResponse?>(null) }
+
+    LaunchedEffect(Unit) {
+
+        val client = okhttp3.OkHttpClient()
+        val gson = com.google.gson.Gson()
+
+        while (isActive) {
+
+            try {
+
+                val json = withContext(Dispatchers.IO) {
+
+                    val request = okhttp3.Request.Builder()
+                        .url("$SERVER_BASE_URL/cluster/status")
+                        .get()
+                        .build()
+
+                    val response = client.newCall(request).execute()
+
+                    response.body?.string()
+                }
+
+                if (json != null) {
+                    clusterStatus =
+                        gson.fromJson(json, ClusterStatusResponse::class.java)
+                }
+
+            } catch (e: Exception) {
+                Log.e("CLUSTER_STATUS", "Status fetch failed", e)
+            }
+
+            delay(5000)
+        }
+    }
+    val totalClusterStorage =
+        clusterStatus?.devices
+            ?.filter { it.status == "ONLINE" }
+            ?.sumOf { it.availableStorage }
+            ?: 0L
+
+    val usedClusterStorage =
+        clusterStatus?.files
+            ?.sumOf { it.fileSize }
+            ?: 0L
+
+    val onlineDevices =
+        clusterStatus?.devices
+            ?.count { it.status == "ONLINE" }
+            ?: 0
+    Log.d("STATUS_STORE", "${totalClusterStorage},${usedClusterStorage}")
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -127,11 +180,11 @@ fun UserModeScreen(
             item {
                 Spacer(modifier = Modifier.height(4.dp))
                 StorageStatsCard(
-                    usedBytes  = fileInfo?.size ?: 0L,
-                    totalBytes = 64L * 1024 * 1024 * 1024
+                    usedBytes = usedClusterStorage,
+                    totalBytes = totalClusterStorage
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                ConnectedDevicesCard(nodeCount = 1)
+                ConnectedDevicesCard(nodeCount = onlineDevices)
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
@@ -471,10 +524,14 @@ private fun DashboardTopBar(onBackClick: () -> Unit) {
 
 @Composable
 private fun StorageStatsCard(usedBytes: Long, totalBytes: Long) {
-    val progress = (usedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+    val progress =
+        if (totalBytes == 0L) 0f
+        else (usedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+
+    val safeProgress = progress.coerceIn(0f, 1f)
 
     val animatedProgress by animateFloatAsState(
-        targetValue  = progress,
+        targetValue = safeProgress,
         animationSpec = tween(1000, easing = EaseOutCubic),
         label        = "storageProgress"
     )
