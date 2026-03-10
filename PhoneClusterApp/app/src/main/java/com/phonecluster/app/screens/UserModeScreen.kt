@@ -296,7 +296,7 @@ fun UserModeScreen(
                                         withContext(Dispatchers.IO) {
                                             val fileText  = FileTextExtractor.extractText(context, selectedFileUri!!)
                                             Log.d("PDF_DEBUG", "Extracted text:\n$fileText")
-                                            val summary   = SummaryEngine.summarize(fileText, 0.4f)
+                                            val summary   = SummaryEngine.summarize(fileText, 0.7f)
                                             val tokenizer = OnnxTokenizer(context)
                                             val (inputIds, attentionMask, tokenTypeIds) = tokenizer.tokenize(summary)
                                             val embedding = engine.generateEmbedding(inputIds, attentionMask, tokenTypeIds)
@@ -385,6 +385,7 @@ private fun DashboardTopBar(onBackClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .background(
                 Brush.verticalGradient(
                     colors = listOf(Color(0xFF060E1E), BgDeep)

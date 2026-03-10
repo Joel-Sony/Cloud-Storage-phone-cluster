@@ -12,6 +12,7 @@ import com.phonecluster.app.screens.SearchScreen
 import com.phonecluster.app.screens.StorageModeScreen
 import com.phonecluster.app.screens.UserModeScreen
 import com.phonecluster.app.ui.theme.CloudStorageAppTheme
+import androidx.activity.enableEdgeToEdge
 
 // Navigation destinations
 sealed class Screen {
@@ -35,7 +36,7 @@ class MainActivity : ComponentActivity() {
                 1
             )
         }
-
+        enableEdgeToEdge()
         setContent {
             val engine = remember { EmbeddingEngine(this) }
 

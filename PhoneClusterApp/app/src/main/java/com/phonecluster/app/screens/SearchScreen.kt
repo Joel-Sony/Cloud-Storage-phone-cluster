@@ -1,26 +1,50 @@
 package com.phonecluster.app.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.phonecluster.app.ml.OnnxTokenizer
-import com.phonecluster.app.ml.SimilarityUtils
-import com.phonecluster.app.storage.AppDatabase
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
 import com.phonecluster.app.ml.EmbeddingEngine
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import com.phonecluster.app.ml.OnnxTokenizer
+import com.phonecluster.app.ml.SimilarityUtils
+import com.phonecluster.app.storage.AppDatabase
+
+private val BgDeep = Color(0xFF020617)
+private val BgCard = Color(0xFF0D1424)
+private val BorderSubtle = Color(0xFF1E293B)
+
+private val AccentCyan = Color(0xFF22D3EE)
+private val AccentPurple = Color(0xFFA78BFA)
+
+private val TextPrimary = Color(0xFFF1F5F9)
+private val TextMuted = Color(0xFF475569)
 
 data class ChatMessage(
     val text: String? = null,
-    val isUser: Boolean,
     val results: List<SearchResult>? = null
 )
 
@@ -36,6 +60,7 @@ fun SearchScreen(
     engine: EmbeddingEngine,
     onBackClick: () -> Unit
 ) {
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -47,15 +72,22 @@ fun SearchScreen(
     val dao = db.fileDao()
 
     Scaffold(
+        containerColor = BgDeep,
         topBar = {
             TopAppBar(
-                title = { Text("Semantic Search") },
+                title = {
+                    Column {
+                        Text("Smart Search", color = TextPrimary)
+                        Text(
+                            "AI file discovery",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextMuted
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.Default.ArrowBack, "Back")
                     }
                 }
             )
@@ -68,43 +100,60 @@ fun SearchScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
+
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                reverseLayout = false
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+
                 items(messages) { message ->
-                    if (message.text != null) {
-                        ChatBubble(message)
+
+                    message.text?.let {
+                        QueryCard(it)
                     }
 
-                    message.results?.let { results ->
-                        results.forEach { result ->
-                            FileResultCard(result)
-                        }
+                    message.results?.forEach { result ->
+                        Spacer(modifier = Modifier.height(13.dp))
+                        FileResultCard(result)
                     }
                 }
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(BgCard)
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Ask about your files...") }
+                    placeholder = { Text("Ask about your files...") },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
+                IconButton(
                     onClick = {
-                        if (query.isBlank()) return@Button
+
+                        if (query.isBlank()) return@IconButton
 
                         scope.launch {
+
                             isSearching = true
 
                             val tokenizer = OnnxTokenizer(context)
+
                             val (inputIds, attentionMask, tokenTypeIds) =
                                 tokenizer.tokenize(query)
 
@@ -119,15 +168,19 @@ fun SearchScreen(
                             }
 
                             val ranked = files.map {
-                                val score = SimilarityUtils.cosineSimilarity(
-                                    queryEmbedding,
-                                    it.embedding
-                                )
+
+                                val score =
+                                    SimilarityUtils.cosineSimilarity(
+                                        queryEmbedding,
+                                        it.embedding
+                                    )
+
                                 it to score
+
                             }.sortedByDescending { it.second }
                                 .take(3)
 
-                            messages = messages + ChatMessage(query, true)
+                            messages = messages + ChatMessage(text = query)
 
                             val resultList = ranked.map { (file, score) ->
                                 SearchResult(
@@ -138,8 +191,7 @@ fun SearchScreen(
                             }
 
                             messages = messages + ChatMessage(
-                                text = "Here are the most relevant files:",
-                                isUser = false,
+                                text = "Top matches",
                                 results = resultList
                             )
 
@@ -148,77 +200,108 @@ fun SearchScreen(
                         }
                     }
                 ) {
-                    Text("Send")
+                    Icon(Icons.Default.Send, contentDescription = "Send", tint = AccentCyan)
                 }
             }
+        }
+    }
+}
 
-        }
-    }
-}
 @Composable
-fun ChatBubble(message: ChatMessage) {
-    Row(
+fun QueryCard(query: String) {
+
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (message.isUser)
-            Arrangement.End else Arrangement.Start
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard),
+        border = BorderStroke(1.dp, BorderSubtle)
     ) {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            color = if (message.isUser)
-                MaterialTheme.colorScheme.primary
-            else
-                MaterialTheme.colorScheme.secondaryContainer,
+
+        Row(
             modifier = Modifier
-                .padding(6.dp)
-                .widthIn(max = 280.dp)
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            message.text?.let {
-                Text(
-                    text = it,
-                    modifier = Modifier.padding(12.dp),
-                    color = if (message.isUser)
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
+
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = AccentPurple,
+                modifier = Modifier.size(20.dp)
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Text(
+                text = query,
+                fontSize = 14.sp,
+                color = TextPrimary
+            )
         }
     }
 }
+
 @Composable
 fun FileResultCard(result: SearchResult) {
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard),
+        border = BorderStroke(1.dp, BorderSubtle)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
 
-            Text(
-                text = result.fileName,
-                style = MaterialTheme.typography.titleMedium
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Type: ${result.fileType}",
-                style = MaterialTheme.typography.bodySmall
-            )
-
-            Text(
-                text = "Similarity: %.3f".format(result.score),
-                style = MaterialTheme.typography.bodySmall
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
-                onClick = { /* TODO: Download logic later JOEL */ },
-                modifier = Modifier.fillMaxWidth()
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF1A1030)),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Download")
+
+                Icon(
+                    imageVector = Icons.Default.Description,
+                    contentDescription = null,
+                    tint = Color(0xFFFC8181),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+
+                Text(
+                    text = result.fileName,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Similarity: %.2f".format(result.score),
+                    fontSize = 11.sp,
+                    color = TextMuted,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            IconButton(onClick = { }) {
+                Icon(
+                    imageVector = Icons.Default.FileDownload,
+                    contentDescription = "Download",
+                    tint = AccentCyan
+                )
             }
         }
     }
