@@ -1,7 +1,7 @@
 package com.phonecluster.app.ml
 
 import kotlin.math.sqrt
-
+import kotlin.math.min
 object SimilarityUtils {
 
     fun cosineSimilarity(a: FloatArray, b: FloatArray): Float {
@@ -15,6 +15,12 @@ object SimilarityUtils {
             normB += b[i] * b[i]
         }
 
-        return dot / (sqrt(normA) * sqrt(normB) + 1e-10f)
+        val rawScore = dot / (sqrt(normA) * sqrt(normB) + 1e-10f)
+
+        val safeScore = kotlin.math.max(0f, rawScore)
+
+        val boostedScore = sqrt(safeScore) * 1.3f
+
+        return min(1.00f, boostedScore)
     }
 }
