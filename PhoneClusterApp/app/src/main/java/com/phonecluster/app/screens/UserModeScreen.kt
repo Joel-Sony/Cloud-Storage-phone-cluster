@@ -434,7 +434,7 @@ fun UserModeScreen(
 // ─── Top Bar ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun DashboardTopBar(onBackClick: () -> Unit) {
+public fun DashboardTopBar(onBackClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
