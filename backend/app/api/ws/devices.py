@@ -160,20 +160,12 @@ async def device_ws(ws: WebSocket):
         logger.info(f"WS: Cleaning up connection for {current_device_id}")
 
         if current_device_id:
-            manager.disconnect(current_device_id)
-            logger.info(
-                f"WS: Disconnected {current_device_id} from manager"
-            )
-
-            # mark device offline
+            # Mark device as OFFLINE and all its replicas as LOST centrally
             db = SessionLocal()
             try:
-                device = db.query(Device).filter(
-                    Device.device_id == current_device_id
-                ).first()
-
-                if device:
-                    device.status = "OFFLINE"
-                    db.commit()
+                from app.services.offline_utils import handle_device_offline
+                handle_device_offline(db, current_device_id)
+                db.commit()
             finally:
                 db.close()
+            logger.info(f"WS: Disconnected {current_device_id} and marked replicas as LOST")
