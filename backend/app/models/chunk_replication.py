@@ -19,7 +19,7 @@ class ChunkReplication(Base):
     )
 
     replica_status = Column(
-        Enum("REPLICATING", "ACTIVE", "LOST", name="replica_status_enum"),
+        Enum("REPLICATING", "ACTIVE", "LOST", "FAILED", name="replica_status_enum"),
         nullable=False,
         default="REPLICATING",
     )

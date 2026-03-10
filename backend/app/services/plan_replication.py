@@ -14,7 +14,7 @@ def plan_replication(
         for r in db.query(ChunkReplication)
         .filter(
             ChunkReplication.chunk_id == chunk_id,
-            ChunkReplication.replica_status != "LOST"
+            ChunkReplication.replica_status == "ACTIVE"
         )
         .all()
     }
@@ -39,12 +39,24 @@ def plan_replication(
 
     # Create replication entries
     for device in candidates:
-        db.add(
-            ChunkReplication(
-                chunk_id=chunk_id,
-                device_id=device.device_id,
-                replica_status="REPLICATING",
+        existing = (
+            db.query(ChunkReplication)
+            .filter(
+                ChunkReplication.chunk_id == chunk_id,
+                ChunkReplication.device_id == device.device_id
             )
+            .first()
         )
+
+        if existing:
+            existing.replica_status = "REPLICATING"
+        else:
+            db.add(
+                ChunkReplication(
+                    chunk_id=chunk_id,
+                    device_id=device.device_id,
+                    replica_status="REPLICATING",
+                )
+            )
 
     db.commit()
