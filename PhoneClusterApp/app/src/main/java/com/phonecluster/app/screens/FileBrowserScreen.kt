@@ -3,6 +3,7 @@ package com.phonecluster.app.screens
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -74,15 +76,15 @@ private data class FileTypeStyle(
 private fun resolveFileType(fileType: String, fileName: String): FileTypeStyle {
     val ext = fileName.substringAfterLast('.', fileType).lowercase()
     return when (ext) {
-        "pdf"                          -> FileTypeStyle(Icons.Default.Description,    Color(0xFFFC8181), BgIconPdf,     "PDF")
+        "pdf"                          -> FileTypeStyle(Icons.Default.Description,    Color(0xFFFC8181), BgIconPdf,        "PDF")
         "jpg", "jpeg", "png",
-        "gif", "webp", "bmp", "heic"  -> FileTypeStyle(Icons.Default.Image,          AccentGreen,       BgIconImg,     "Image")
-        "doc", "docx", "txt", "md"    -> FileTypeStyle(Icons.Default.Article,         AccentCyan,        BgIconDoc,     "Document")
+        "gif", "webp", "bmp", "heic"  -> FileTypeStyle(Icons.Default.Image,          AccentGreen,       BgIconImg,        "Image")
+        "doc", "docx", "txt", "md"    -> FileTypeStyle(Icons.Default.Article,         AccentCyan,        BgIconDoc,        "Document")
         "mp4", "mov", "avi", "mkv"    -> FileTypeStyle(Icons.Default.PlayCircle,      AccentPurple,      Color(0xFF150D2A), "Video")
         "mp3", "wav", "flac", "aac"   -> FileTypeStyle(Icons.Default.MusicNote,       AccentAmber,       Color(0xFF1A1200), "Audio")
         "zip", "tar", "gz", "rar"     -> FileTypeStyle(Icons.Default.FolderZip,       AccentAmber,       Color(0xFF1A1000), "Archive")
         "xls", "xlsx", "csv"          -> FileTypeStyle(Icons.Default.TableChart,      AccentGreen,       Color(0xFF051A10), "Spreadsheet")
-        else                          -> FileTypeStyle(Icons.Default.InsertDriveFile, TextSecondary,     BgIconGeneric, "File")
+        else                          -> FileTypeStyle(Icons.Default.InsertDriveFile, TextSecondary,     BgIconGeneric,    "File")
     }
 }
 
@@ -111,9 +113,9 @@ fun FileBrowserScreen(
                     .fillMaxSize()
                     .padding(paddingValues),
                 contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 12.dp,
+                    start  = 16.dp,
+                    end    = 16.dp,
+                    top    = 12.dp,
                     bottom = 32.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -125,7 +127,7 @@ fun FileBrowserScreen(
 
                 itemsIndexed(files) { _, file ->
                     FileItem(
-                        file = file,
+                        file       = file,
                         onDownload = { id -> viewModel.downloadFile(id) }
                     )
                 }
@@ -145,71 +147,66 @@ private fun FileBrowserTopBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF060E1E), BgDeep)
-                )
-            )
+            .background(Brush.verticalGradient(listOf(Color(0xFF060E1E), BgDeep)))
     ) {
         TopAppBar(
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
+                containerColor             = Color.Transparent,
                 navigationIconContentColor = TextPrimary,
-                actionIconContentColor = TextSecondary,
-                titleContentColor = TextPrimary
+                actionIconContentColor     = TextSecondary,
+                titleContentColor          = TextPrimary
             ),
             navigationIcon = {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBackIosNew,
+                        imageVector    = Icons.Default.ArrowBackIosNew,
                         contentDescription = "Back",
-                        modifier = Modifier.size(20.dp)
+                        modifier       = Modifier.size(20.dp)
                     )
                 }
             },
             title = {
                 Column {
                     Text(
-                        text = "My Files",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        text          = "My Files",
+                        fontSize      = 20.sp,
+                        fontWeight    = FontWeight.Bold,
+                        color         = TextPrimary,
                         letterSpacing = (-0.3).sp
                     )
                     Text(
-                        text = "$fileCount items  •  PocketCluster",
+                        text     = "$fileCount items  ·  PocketCluster",
                         fontSize = 11.sp,
-                        color = TextMuted,
-                        letterSpacing = 0.sp
+                        color    = TextMuted
                     )
                 }
             },
             actions = {
                 IconButton(onClick = { /* TODO: search */ }) {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector    = Icons.Default.Search,
                         contentDescription = "Search",
-                        modifier = Modifier.size(20.dp)
+                        modifier       = Modifier.size(20.dp)
                     )
                 }
                 IconButton(onClick = { /* TODO: sort */ }) {
                     Icon(
-                        imageVector = Icons.Default.Sort,
+                        imageVector    = Icons.Default.Sort,
                         contentDescription = "Sort",
-                        modifier = Modifier.size(20.dp)
+                        modifier       = Modifier.size(20.dp)
                     )
                 }
             }
         )
 
-        // Cyan accent divider line
+        // Cyan accent divider
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(
+                        listOf(
                             Color.Transparent,
                             AccentCyan.copy(alpha = 0.35f),
                             AccentCyan.copy(alpha = 0.6f),
@@ -226,23 +223,30 @@ private fun FileBrowserTopBar(
 
 @Composable
 private fun StorageSummaryBanner(files: List<FileEntity>) {
-    val totalBytes = files.sumOf { it.fileSize }
+    val totalBytes  = files.sumOf { it.fileSize }
+    val uniqueTypes = files.map { it.fileName.substringAfterLast('.').lowercase() }.distinct().size
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A1628)),
-        elevation = CardDefaults.cardElevation(0.dp)
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(containerColor = Color(0xFF0A1628)),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border    = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(
+                listOf(AccentCyan.copy(0.25f), BorderSubtle, AccentPurple.copy(0.15f))
+            )
+        )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(
-                            AccentCyan.copy(alpha = 0.07f),
+                        listOf(
+                            AccentCyan.copy(alpha = 0.06f),
                             Color.Transparent,
-                            AccentPurple.copy(alpha = 0.05f)
+                            AccentPurple.copy(alpha = 0.04f)
                         )
                     )
                 )
@@ -250,38 +254,54 @@ private fun StorageSummaryBanner(files: List<FileEntity>) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                // Total size
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Total stored",
-                        fontSize = 11.sp,
-                        color = TextMuted,
-                        letterSpacing = 0.5.sp
+                        text          = "TOTAL STORED",
+                        fontSize      = 9.sp,
+                        color         = TextMuted,
+                        letterSpacing = 1.2.sp,
+                        fontFamily    = FontFamily.Monospace
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = formatSize(totalBytes),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentCyan,
-                        fontFamily = FontFamily.Monospace
+                        text          = formatSize(totalBytes),
+                        fontSize      = 26.sp,
+                        fontWeight    = FontWeight.Bold,
+                        color         = AccentCyan,
+                        fontFamily    = FontFamily.Monospace,
+                        letterSpacing = (-0.5).sp
                     )
                 }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    SummaryChip(label = "${files.size}", sublabel = "files", color = AccentCyan)
-                    SummaryChip(
-                        label = files.map { it.fileName.substringAfterLast('.').lowercase() }
-                            .distinct().size.toString(),
-                        sublabel = "types",
-                        color = AccentPurple
-                    )
-                }
+                // Divider
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(40.dp)
+                        .background(BorderSubtle)
+                )
+
+                Spacer(modifier = Modifier.width(20.dp))
+
+                // Files count
+                SummaryChip(
+                    label    = "${files.size}",
+                    sublabel = "files",
+                    color    = AccentCyan
+                )
+
+                Spacer(modifier = Modifier.width(20.dp))
+
+                // Types count
+                SummaryChip(
+                    label    = "$uniqueTypes",
+                    sublabel = "types",
+                    color    = AccentPurple
+                )
             }
         }
     }
@@ -291,16 +311,16 @@ private fun StorageSummaryBanner(files: List<FileEntity>) {
 private fun SummaryChip(label: String, sublabel: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = label,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = color,
-            fontFamily = FontFamily.Monospace
+            text          = label,
+            fontSize      = 20.sp,
+            fontWeight    = FontWeight.Bold,
+            color         = color,
+            fontFamily    = FontFamily.Monospace
         )
         Text(
-            text = sublabel,
-            fontSize = 10.sp,
-            color = TextMuted,
+            text          = sublabel,
+            fontSize      = 10.sp,
+            color         = TextMuted,
             letterSpacing = 0.5.sp
         )
     }
@@ -314,23 +334,26 @@ fun FileItem(
     onDownload: (Long) -> Unit
 ) {
     val typeStyle = resolveFileType(file.fileType, file.fileName)
-    var pressed by remember { mutableStateOf(false) }
+    var pressed   by remember { mutableStateOf(false) }
     val cardColor by animateColorAsState(
-        targetValue = if (pressed) BgCardHover else BgCard,
+        targetValue  = if (pressed) BgCardHover else BgCard,
         animationSpec = tween(150),
-        label = "cardColor"
+        label        = "cardColor"
     )
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp
-        ),
-        border = androidx.compose.foundation.BorderStroke(
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(14.dp),
+        colors    = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border    = androidx.compose.foundation.BorderStroke(
             width = 1.dp,
-            color = BorderSubtle
+            brush = Brush.horizontalGradient(
+                listOf(
+                    typeStyle.tint.copy(alpha = 0.15f),
+                    BorderSubtle
+                )
+            )
         )
     ) {
         Row(
@@ -340,49 +363,60 @@ fun FileItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            // ── File type icon container ──────────────────────────────────
+            // ── File type icon ────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .size(46.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(typeStyle.bgColor),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(typeStyle.bgColor)
+                    .border(1.dp, typeStyle.tint.copy(0.15f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = typeStyle.icon,
+                    imageVector    = typeStyle.icon,
                     contentDescription = typeStyle.label,
-                    tint = typeStyle.tint,
-                    modifier = Modifier.size(24.dp)
+                    tint           = typeStyle.tint,
+                    modifier       = Modifier.size(24.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(14.dp))
 
-            // ── File name + metadata ──────────────────────────────────────
+            // ── File name + metadata ──────────────────────────────────────────
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = file.fileName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    text          = file.fileName,
+                    fontSize      = 14.sp,
+                    fontWeight    = FontWeight.SemiBold,
+                    color         = TextPrimary,
+                    maxLines      = 1,
+                    overflow      = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     letterSpacing = (-0.1).sp
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalAlignment      = Alignment.CenterVertically,
+                    horizontalArrangement  = Arrangement.spacedBy(6.dp)
                 ) {
-                    // File size chip
-                    MetaChip(
-                        text = formatSize(file.fileSize),
-                        color = TextSecondary
-                    )
+                    // Type badge
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(typeStyle.tint.copy(0.1f))
+                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text          = typeStyle.label.uppercase(),
+                            fontSize      = 9.sp,
+                            color         = typeStyle.tint,
+                            fontFamily    = FontFamily.Monospace,
+                            letterSpacing = 0.5.sp,
+                            fontWeight    = FontWeight.Bold
+                        )
+                    }
 
-                    // Dot separator
                     Box(
                         modifier = Modifier
                             .size(3.dp)
@@ -390,47 +424,49 @@ fun FileItem(
                             .background(TextMuted)
                     )
 
-                    // Date
-                    Text(
-                        text = formatDate(file.fileDate),
-                        fontSize = 11.sp,
-                        color = TextMuted,
-                        letterSpacing = 0.sp
+                    MetaChip(text = formatSize(file.fileSize), color = TextSecondary)
+
+                    Box(
+                        modifier = Modifier
+                            .size(3.dp)
+                            .clip(CircleShape)
+                            .background(TextMuted)
                     )
 
-                    // Status badge
-                    StatusBadge(available = true)
+                    Text(
+                        text     = formatDate(file.fileDate),
+                        fontSize = 11.sp,
+                        color    = TextMuted
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.width(4.dp))
 
-            // ── Actions ───────────────────────────────────────────────────
+            // ── Actions ───────────────────────────────────────────────────────
             Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
 
-                // Download
                 IconButton(
-                    onClick = { onDownload(file.serverFileId.toLong()) },
+                    onClick  = { onDownload(file.serverFileId.toLong()) },
                     modifier = Modifier.size(38.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.FileDownload,
+                        imageVector    = Icons.Default.FileDownload,
                         contentDescription = "Download",
-                        tint = AccentCyan,
-                        modifier = Modifier.size(20.dp)
+                        tint           = AccentCyan,
+                        modifier       = Modifier.size(20.dp)
                     )
                 }
 
-                // Delete
                 IconButton(
-                    onClick = { /* TODO delete */ },
+                    onClick  = { /* TODO delete */ },
                     modifier = Modifier.size(38.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.DeleteOutline,
+                        imageVector    = Icons.Default.DeleteOutline,
                         contentDescription = "Delete",
-                        tint = ErrorRed.copy(alpha = 0.75f),
-                        modifier = Modifier.size(20.dp)
+                        tint           = ErrorRed.copy(alpha = 0.75f),
+                        modifier       = Modifier.size(20.dp)
                     )
                 }
             }
@@ -443,37 +479,11 @@ fun FileItem(
 @Composable
 private fun MetaChip(text: String, color: Color) {
     Text(
-        text = text,
-        fontSize = 11.sp,
-        color = color,
-        fontFamily = FontFamily.Monospace,
-        letterSpacing = 0.sp
+        text       = text,
+        fontSize   = 11.sp,
+        color      = color,
+        fontFamily = FontFamily.Monospace
     )
-}
-
-@Composable
-private fun StatusBadge(available: Boolean) {
-    val dotColor = if (available) AccentGreen else AccentAmber
-    val label    = if (available) "Available" else "Partial"
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(5.dp)
-                .clip(CircleShape)
-                .background(dotColor)
-        )
-        Text(
-            text = label,
-            fontSize = 10.sp,
-            color = dotColor,
-            letterSpacing = 0.3.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
 }
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
@@ -481,7 +491,7 @@ private fun StatusBadge(available: Boolean) {
 @Composable
 private fun EmptyState(modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier         = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -490,31 +500,32 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(BgCard),
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(BgCard)
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.FolderOpen,
+                    imageVector    = Icons.Outlined.FolderOpen,
                     contentDescription = null,
-                    tint = TextMuted,
-                    modifier = Modifier.size(36.dp)
+                    tint           = TextMuted,
+                    modifier       = Modifier.size(38.dp)
                 )
             }
 
             Text(
-                text = "No files stored",
-                fontSize = 16.sp,
+                text       = "No files stored",
+                fontSize   = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextSecondary
+                color      = TextSecondary
             )
 
             Text(
-                text = "Files synced to your cluster\nwill appear here",
-                fontSize = 13.sp,
-                color = TextMuted,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                text      = "Files synced to your cluster\nwill appear here",
+                fontSize  = 13.sp,
+                color     = TextMuted,
+                textAlign = TextAlign.Center
             )
         }
     }

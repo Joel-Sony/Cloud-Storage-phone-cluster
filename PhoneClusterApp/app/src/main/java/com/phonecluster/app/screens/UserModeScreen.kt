@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -56,6 +58,7 @@ import kotlinx.coroutines.withContext
 import com.phonecluster.app.utils.ClusterStatusResponse
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+
 // ─── Color Tokens ─────────────────────────────────────────────────────────────
 
 private val BgDeep        = Color(0xFF020617)
@@ -87,7 +90,7 @@ fun UserModeScreen(
     val db  = AppDatabase.getDatabase(context)
     val dao = db.fileDao()
 
-    // ── State (unchanged) ────────────────────────────────────────────────────
+    // ── State ────────────────────────────────────────────────────────────────
     var selectedFileUri  by remember { mutableStateOf<Uri?>(null) }
     var fileInfo         by remember { mutableStateOf<ChunkedFileInfo?>(null) }
     var chunks           by remember { mutableStateOf<List<FileChunk>>(emptyList()) }
@@ -97,56 +100,43 @@ fun UserModeScreen(
     var isUploading      by remember { mutableStateOf(false) }
     var uploadProgress   by remember { mutableStateOf(0 to 0) }
     var uploadedFileId   by remember { mutableStateOf<Int?>(null) }
-    var clusterStatus by remember { mutableStateOf<ClusterStatusResponse?>(null) }
+    var clusterStatus    by remember { mutableStateOf<ClusterStatusResponse?>(null) }
 
+    // ── Cluster status polling ────────────────────────────────────────────────
     LaunchedEffect(Unit) {
-
         val client = okhttp3.OkHttpClient()
-        val gson = com.google.gson.Gson()
+        val gson   = com.google.gson.Gson()
 
         while (isActive) {
-
             try {
-
                 val json = withContext(Dispatchers.IO) {
-
                     val request = okhttp3.Request.Builder()
                         .url("$SERVER_BASE_URL/cluster/status")
                         .get()
                         .build()
-
                     val response = client.newCall(request).execute()
-
                     response.body?.string()
                 }
-
                 if (json != null) {
-                    clusterStatus =
-                        gson.fromJson(json, ClusterStatusResponse::class.java)
+                    clusterStatus = gson.fromJson(json, ClusterStatusResponse::class.java)
                 }
-
             } catch (e: Exception) {
                 Log.e("CLUSTER_STATUS", "Status fetch failed", e)
             }
-
             delay(5000)
         }
     }
-    val totalClusterStorage =
-        clusterStatus?.devices
-            ?.filter { it.status == "ONLINE" }
-            ?.sumOf { it.availableStorage }
-            ?: 0L
 
-    val usedClusterStorage =
-        clusterStatus?.files
-            ?.sumOf { it.fileSize }
-            ?: 0L
+    val totalClusterStorage = clusterStatus?.devices
+        ?.filter { it.status == "ONLINE" }
+        ?.sumOf { it.availableStorage } ?: 0L
 
-    val onlineDevices =
-        clusterStatus?.devices
-            ?.count { it.status == "ONLINE" }
-            ?: 0
+    val usedClusterStorage = clusterStatus?.files
+        ?.sumOf { it.fileSize } ?: 0L
+
+    val onlineDevices = clusterStatus?.devices
+        ?.count { it.status == "ONLINE" } ?: 0
+
     Log.d("STATUS_STORE", "${totalClusterStorage},${usedClusterStorage}")
 
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -167,7 +157,7 @@ fun UserModeScreen(
             .background(BgDeep)
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
 
@@ -176,26 +166,26 @@ fun UserModeScreen(
                 DashboardTopBar(onBackClick = onBackClick)
             }
 
-            // ── Stats Row ────────────────────────────────────────────────────
+            // ── Storage Arc + Devices ─────────────────────────────────────────
             item {
                 Spacer(modifier = Modifier.height(4.dp))
                 StorageStatsCard(
-                    usedBytes = usedClusterStorage,
-                    totalBytes = totalClusterStorage
+                    usedBytes  = usedClusterStorage,
+                    totalBytes = totalClusterStorage,
+                    nodeCount  = onlineDevices
                 )
-                Spacer(modifier = Modifier.height(10.dp))
-                ConnectedDevicesCard(nodeCount = onlineDevices)
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
-            // ── Quick Actions ────────────────────────────────────────────────
+            // ── Quick Actions ─────────────────────────────────────────────────
             item {
                 Text(
-                    text = "Quick Actions",
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    text          = "QUICK ACTIONS",
+                    fontSize      = 10.sp,
+                    color         = TextMuted,
+                    letterSpacing = 1.2.sp,
+                    fontFamily    = FontFamily.Monospace,
+                    modifier      = Modifier.padding(horizontal = 16.dp)
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
@@ -236,8 +226,8 @@ fun UserModeScreen(
             errorMessage?.let { error ->
                 item {
                     StatusBanner(
-                        text    = error,
-                        isError = true,
+                        text     = error,
+                        isError  = true,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -247,8 +237,8 @@ fun UserModeScreen(
             uploadedFileId?.let { id ->
                 item {
                     StatusBanner(
-                        text    = "File uploaded successfully · ID $id",
-                        isError = false,
+                        text     = "File uploaded successfully · ID $id",
+                        isError  = false,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -259,11 +249,12 @@ fun UserModeScreen(
             fileInfo?.let { info ->
                 item {
                     Text(
-                        text = "Selected File",
-                        fontSize = 12.sp,
-                        color = TextMuted,
-                        letterSpacing = 0.8.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        text          = "SELECTED FILE",
+                        fontSize      = 10.sp,
+                        color         = TextMuted,
+                        letterSpacing = 1.2.sp,
+                        fontFamily    = FontFamily.Monospace,
+                        modifier      = Modifier.padding(horizontal = 16.dp)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     SelectedFileCard(info = info, modifier = Modifier.padding(horizontal = 16.dp))
@@ -273,14 +264,14 @@ fun UserModeScreen(
                 // Chunk button
                 item {
                     DarkActionButton(
-                        label     = if (isChunking) "Chunking…" else "Prepare Chunks",
-                        icon      = Icons.Outlined.Build,
+                        label       = if (isChunking) "Chunking…" else "Prepare Chunks",
+                        icon        = Icons.Outlined.Build,
                         accentColor = AccentAmber,
-                        enabled   = !isChunking && chunks.isEmpty(),
-                        modifier  = Modifier
+                        enabled     = !isChunking && chunks.isEmpty(),
+                        modifier    = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        onClick   = {
+                        onClick = {
                             scope.launch {
                                 isChunking   = true
                                 errorMessage = null
@@ -323,17 +314,15 @@ fun UserModeScreen(
                             modifier    = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),
-                            onClick     = {
+                            onClick = {
                                 scope.launch {
                                     isUploading    = true
                                     errorMessage   = null
                                     uploadedFileId = null
                                     uploadProgress = 0 to chunks.size
                                     try {
-                                        // IMPORTANT: Change this to your PC's IP address
-//                                        val baseUrl = "http://10.124.156.168:8000"
                                         val baseUrl = SERVER_BASE_URL
-                                        val userId = 1 // TODO: Get from actual user session
+                                        val userId  = 1
 
                                         val fileId = withContext(Dispatchers.IO) {
                                             ChunkUploader.uploadAll(
@@ -397,10 +386,11 @@ fun UserModeScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "CHUNKS",
-                            fontSize = 12.sp,
-                            color = TextMuted,
-                            letterSpacing = 0.8.sp
+                            text          = "CHUNKS",
+                            fontSize      = 10.sp,
+                            color         = TextMuted,
+                            letterSpacing = 1.2.sp,
+                            fontFamily    = FontFamily.Monospace
                         )
                         Box(
                             modifier = Modifier
@@ -409,9 +399,9 @@ fun UserModeScreen(
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "${chunks.size}",
-                                fontSize = 11.sp,
-                                color = AccentCyan,
+                                text       = "${chunks.size}",
+                                fontSize   = 11.sp,
+                                color      = AccentCyan,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold
                             )
@@ -439,11 +429,7 @@ public fun DashboardTopBar(onBackClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF060E1E), BgDeep)
-                )
-            )
+            .background(Brush.verticalGradient(listOf(Color(0xFF060E1E), BgDeep)))
     ) {
         Row(
             modifier = Modifier
@@ -453,36 +439,35 @@ public fun DashboardTopBar(onBackClick: () -> Unit) {
         ) {
             IconButton(onClick = onBackClick) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBackIosNew,
+                    imageVector    = Icons.Default.ArrowBackIosNew,
                     contentDescription = "Back",
-                    tint = TextPrimary,
-                    modifier = Modifier.size(18.dp)
+                    tint           = TextPrimary,
+                    modifier       = Modifier.size(18.dp)
                 )
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "PocketCluster",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    text          = "PocketCluster",
+                    fontSize      = 20.sp,
+                    fontWeight    = FontWeight.Bold,
+                    color         = TextPrimary,
                     letterSpacing = (-0.3).sp
                 )
                 Text(
-                    text = "Decentralized Personal Storage",
+                    text     = "Decentralized Personal Storage",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color    = TextMuted
                 )
             }
 
-            // Cluster Online badge
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
                     .background(AccentGreen.copy(alpha = 0.1f))
                     .border(1.dp, AccentGreen.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
                     .padding(horizontal = 10.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Box(
@@ -492,10 +477,10 @@ public fun DashboardTopBar(onBackClick: () -> Unit) {
                         .background(AccentGreen)
                 )
                 Text(
-                    text = "Cluster Online",
-                    fontSize = 11.sp,
+                    text       = "Cluster Online",
+                    fontSize   = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = AccentGreen
+                    color      = AccentGreen
                 )
             }
         }
@@ -507,7 +492,7 @@ public fun DashboardTopBar(onBackClick: () -> Unit) {
                 .height(1.dp)
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(
+                        listOf(
                             Color.Transparent,
                             AccentCyan.copy(alpha = 0.35f),
                             AccentCyan.copy(alpha = 0.6f),
@@ -520,183 +505,221 @@ public fun DashboardTopBar(onBackClick: () -> Unit) {
     }
 }
 
-// ─── Storage Stats Card ───────────────────────────────────────────────────────
+// ─── Storage Stats Card (Circular Arc + Node Count) ───────────────────────────
 
 @Composable
-private fun StorageStatsCard(usedBytes: Long, totalBytes: Long) {
-    val progress =
-        if (totalBytes == 0L) 0f
-        else (usedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
-
-    val safeProgress = progress.coerceIn(0f, 1f)
+private fun StorageStatsCard(usedBytes: Long, totalBytes: Long, nodeCount: Int) {
+    val progress = if (totalBytes == 0L) 0f
+    else (usedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
 
     val animatedProgress by animateFloatAsState(
-        targetValue = safeProgress,
-        animationSpec = tween(1000, easing = EaseOutCubic),
-        label        = "storageProgress"
+        targetValue   = progress,
+        animationSpec = tween(1200, easing = EaseOutCubic),
+        label         = "arcProgress"
     )
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCard),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(AccentCyan.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Storage,
-                        contentDescription = null,
-                        tint = AccentCyan,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Text(
-                    text = "Total Storage",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // used / total
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = formatSize(usedBytes),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentCyan,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = "/ ${formatSize(totalBytes)}",
-                        fontSize = 13.sp,
-                        color = TextMuted,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Progress track
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(BorderSubtle)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(animatedProgress)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(AccentCyan, AccentCyan.copy(alpha = 0.6f))
-                            )
-                        )
-                )
-            }
-        }
+    // Arc color transitions: green → amber → red by fill level
+    val arcColor = when {
+        progress < 0.6f -> AccentCyan
+        progress < 0.85f -> AccentAmber
+        else             -> ErrorRed
     }
-}
 
-// ─── Connected Devices Card ───────────────────────────────────────────────────
-
-@Composable
-private fun ConnectedDevicesCard(nodeCount: Int) {
     Card(
-        modifier = Modifier
+        modifier  = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCard),
+        shape     = RoundedCornerShape(20.dp),
+        colors    = CardDefaults.cardColors(containerColor = BgCard),
         elevation = CardDefaults.cardElevation(0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+        border    = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(AccentPurple.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Hub,
-                    contentDescription = null,
-                    tint = AccentPurple,
-                    modifier = Modifier.size(20.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(AccentCyan.copy(0.04f), Color.Transparent)
+                    )
                 )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Text(
-                text = "Connected Devices",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Node count
-            Text(
-                text = "$nodeCount",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
-                fontFamily = FontFamily.Monospace
-            )
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            // Active Nodes badge
+        ) {
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(AccentGreen.copy(alpha = 0.1f))
-                    .border(1.dp, AccentGreen.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 9.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+
+                // ── Circular Arc ──────────────────────────────────────────────
                 Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .clip(CircleShape)
-                        .background(AccentGreen)
-                )
-                Text(
-                    text = "Active Nodes",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = AccentGreen
-                )
+                    modifier         = Modifier.size(110.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val sw        = 10.dp.toPx()
+                        val arcSize   = Size(size.width - sw, size.height - sw)
+                        val topLeft   = Offset(sw / 2f, sw / 2f)
+                        val startAngle = 135f
+                        val sweep      = 270f
+
+                        // Track
+                        drawArc(
+                            color      = BorderSubtle,
+                            startAngle = startAngle,
+                            sweepAngle = sweep,
+                            useCenter  = false,
+                            topLeft    = topLeft,
+                            size       = arcSize,
+                            style      = Stroke(width = sw, cap = StrokeCap.Round)
+                        )
+
+                        // Progress arc
+                        if (animatedProgress > 0f) {
+                            drawArc(
+                                brush      = Brush.sweepGradient(
+                                    colors = listOf(
+                                        arcColor.copy(alpha = 0.6f),
+                                        arcColor
+                                    ),
+                                    center = center
+                                ),
+                                startAngle = startAngle,
+                                sweepAngle = sweep * animatedProgress,
+                                useCenter  = false,
+                                topLeft    = topLeft,
+                                size       = arcSize,
+                                style      = Stroke(width = sw, cap = StrokeCap.Round)
+                            )
+                        }
+                    }
+
+                    // Center label
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text       = "%.0f%%".format(animatedProgress * 100),
+                            fontSize   = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = arcColor,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text          = "used",
+                            fontSize      = 9.sp,
+                            color         = TextMuted,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // ── Storage details + node count ──────────────────────────────
+                Column(
+                    modifier              = Modifier.weight(1f),
+                    verticalArrangement   = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Storage label
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text          = "CLUSTER STORAGE",
+                            fontSize      = 9.sp,
+                            color         = TextMuted,
+                            letterSpacing = 1.2.sp,
+                            fontFamily    = FontFamily.Monospace
+                        )
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text       = formatSize(usedBytes),
+                                fontSize   = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color      = AccentCyan,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text       = "/ ${formatSize(totalBytes)}",
+                                fontSize   = 12.sp,
+                                color      = TextMuted,
+                                fontFamily = FontFamily.Monospace,
+                                modifier   = Modifier.padding(bottom = 1.dp)
+                            )
+                        }
+                    }
+
+                    // Divider
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(BorderSubtle)
+                    )
+
+                    // Node count
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(AccentPurple.copy(0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector    = Icons.Outlined.Hub,
+                                contentDescription = null,
+                                tint           = AccentPurple,
+                                modifier       = Modifier.size(15.dp)
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text       = "$nodeCount",
+                                fontSize   = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color      = TextPrimary,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text          = "active nodes",
+                                fontSize      = 10.sp,
+                                color         = TextMuted,
+                                letterSpacing = 0.2.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(AccentGreen.copy(0.1f))
+                                .border(1.dp, AccentGreen.copy(0.25f), RoundedCornerShape(20.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(AccentGreen)
+                            )
+                            Text(
+                                text       = "ONLINE",
+                                fontSize   = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color      = AccentGreen,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -717,35 +740,32 @@ private fun QuickActionTile(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue  = if (isPressed) 0.94f else 1f,
+        targetValue   = if (isPressed) 0.94f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
-        label        = "tileScale"
+        label         = "tileScale"
     )
     val bgAlpha by animateFloatAsState(
-        targetValue  = if (isPressed) 0.18f else 0.08f,
+        targetValue   = if (isPressed) 0.18f else 0.08f,
         animationSpec = tween(100),
-        label        = "tileBg"
+        label         = "tileBg"
     )
 
     Card(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clickable(interactionSource = interactionSource, indication = null) { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCard),
+        shape     = RoundedCornerShape(14.dp),
+        colors    = CardDefaults.cardColors(containerColor = BgCard),
         elevation = CardDefaults.cardElevation(0.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            color.copy(alpha = if (isPressed) 0.4f else 0.15f)
+        border    = androidx.compose.foundation.BorderStroke(
+            1.dp, color.copy(alpha = if (isPressed) 0.4f else 0.15f)
         )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    Brush.verticalGradient(
-                        colors = listOf(color.copy(alpha = bgAlpha), Color.Transparent)
-                    )
+                    Brush.verticalGradient(listOf(color.copy(bgAlpha), Color.Transparent))
                 )
         ) {
             Column(
@@ -757,33 +777,33 @@ private fun QuickActionTile(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(color.copy(alpha = 0.12f))
-                        .border(1.dp, color.copy(alpha = 0.2f), RoundedCornerShape(10.dp)),
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(color.copy(0.12f))
+                        .border(1.dp, color.copy(0.2f), RoundedCornerShape(11.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = icon,
+                        imageVector    = icon,
                         contentDescription = label,
-                        tint = color,
-                        modifier = Modifier.size(22.dp)
+                        tint           = color,
+                        modifier       = Modifier.size(22.dp)
                     )
                 }
 
                 Text(
-                    text = label,
-                    fontSize = 12.sp,
+                    text      = label,
+                    fontSize  = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color     = TextPrimary,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     lineHeight = 15.sp
                 )
 
                 Text(
-                    text = sublabel,
-                    fontSize = 10.sp,
-                    color = TextMuted,
+                    text      = sublabel,
+                    fontSize  = 10.sp,
+                    color     = TextMuted,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
@@ -796,60 +816,56 @@ private fun QuickActionTile(
 @Composable
 private fun SelectedFileCard(info: ChunkedFileInfo, modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCard),
+        modifier  = modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(14.dp),
+        colors    = CardDefaults.cardColors(containerColor = BgCard),
         elevation = CardDefaults.cardElevation(0.dp),
-        border = androidx.compose.foundation.BorderStroke(
+        border    = androidx.compose.foundation.BorderStroke(
             1.dp,
-            Brush.horizontalGradient(
-                listOf(AccentCyan.copy(alpha = 0.4f), BorderSubtle, BorderSubtle)
-            )
+            Brush.horizontalGradient(listOf(AccentCyan.copy(0.4f), BorderSubtle, BorderSubtle))
         )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    Brush.horizontalGradient(
-                        listOf(AccentCyan.copy(alpha = 0.05f), Color.Transparent)
-                    )
+                    Brush.horizontalGradient(listOf(AccentCyan.copy(0.05f), Color.Transparent))
                 )
                 .padding(14.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(AccentCyan.copy(alpha = 0.1f)),
+                        .background(AccentCyan.copy(0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.InsertDriveFile,
+                        imageVector    = Icons.Outlined.InsertDriveFile,
                         contentDescription = null,
-                        tint = AccentCyan,
-                        modifier = Modifier.size(22.dp)
+                        tint           = AccentCyan,
+                        modifier       = Modifier.size(22.dp)
                     )
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = info.name,
-                        fontSize = 14.sp,
+                        text       = info.name,
+                        fontSize   = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color      = TextPrimary,
+                        maxLines   = 1,
+                        overflow   = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(3.dp))
                     Text(
-                        text = "${formatSize(info.size)}  ·  ${info.mimeType ?: "Unknown type"}",
-                        fontSize = 11.sp,
-                        color = TextSecondary,
+                        text       = "${formatSize(info.size)}  ·  ${info.mimeType ?: "Unknown type"}",
+                        fontSize   = 11.sp,
+                        color      = TextSecondary,
                         fontFamily = FontFamily.Monospace
                     )
                 }
@@ -874,8 +890,13 @@ private fun SelectedFileCard(info: ChunkedFileInfo, modifier: Modifier = Modifie
 @Composable
 private fun MetaItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, fontSize = 15.sp, fontWeight = FontWeight.Bold,
-            color = TextPrimary, fontFamily = FontFamily.Monospace)
+        Text(
+            text       = value,
+            fontSize   = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color      = TextPrimary,
+            fontFamily = FontFamily.Monospace
+        )
         Text(text = label, fontSize = 10.sp, color = TextMuted)
     }
 }
@@ -895,9 +916,9 @@ private fun DarkActionButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue  = if (isPressed && enabled) 0.97f else 1f,
+        targetValue   = if (isPressed && enabled) 0.97f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
-        label        = "btnScale"
+        label         = "btnScale"
     )
 
     Box(
@@ -912,8 +933,7 @@ private fun DarkActionButton(
             )
             .border(
                 1.dp,
-                if (enabled) accentColor.copy(alpha = if (isPressed) 0.7f else 0.35f)
-                else BorderSubtle,
+                if (enabled) accentColor.copy(if (isPressed) 0.7f else 0.35f) else BorderSubtle,
                 RoundedCornerShape(12.dp)
             )
             .clickable(
@@ -925,20 +945,20 @@ private fun DarkActionButton(
         contentAlignment = Alignment.Center
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                imageVector = icon,
+                imageVector    = icon,
                 contentDescription = null,
-                tint = if (enabled) accentColor else TextMuted,
-                modifier = Modifier.size(18.dp)
+                tint           = if (enabled) accentColor else TextMuted,
+                modifier       = Modifier.size(18.dp)
             )
             Text(
-                text = label,
-                fontSize = 14.sp,
+                text       = label,
+                fontSize   = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (enabled) TextPrimary else TextMuted
+                color      = if (enabled) TextPrimary else TextMuted
             )
         }
     }
@@ -960,9 +980,9 @@ private fun ProgressRow(label: String, progress: Float?, modifier: Modifier = Mo
         ) {
             if (progress != null) {
                 val animProg by animateFloatAsState(
-                    targetValue = progress,
+                    targetValue   = progress,
                     animationSpec = tween(300),
-                    label = "prog"
+                    label         = "prog"
                 )
                 Box(
                     modifier = Modifier
@@ -1010,10 +1030,10 @@ private fun StatusBanner(text: String, isError: Boolean, modifier: Modifier = Mo
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(color.copy(alpha = 0.08f))
-            .border(1.dp, color.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+            .background(color.copy(0.08f))
+            .border(1.dp, color.copy(0.25f), RoundedCornerShape(10.dp))
             .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
@@ -1026,50 +1046,50 @@ private fun StatusBanner(text: String, isError: Boolean, modifier: Modifier = Mo
 @Composable
 private fun ChunkCard(chunk: FileChunk, modifier: Modifier = Modifier) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCard),
+        modifier  = modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(10.dp),
+        colors    = CardDefaults.cardColors(containerColor = BgCard),
         elevation = CardDefaults.cardElevation(0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+        border    = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(AccentCyan.copy(alpha = 0.08f)),
+                        .background(AccentCyan.copy(0.08f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "${chunk.index}",
-                        fontSize = 11.sp,
+                        text       = "${chunk.index}",
+                        fontSize   = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AccentCyan,
+                        color      = AccentCyan,
                         fontFamily = FontFamily.Monospace
                     )
                 }
 
                 Column {
                     Text(
-                        text = "Chunk #${chunk.index}",
-                        fontSize = 13.sp,
+                        text       = "Chunk #${chunk.index}",
+                        fontSize   = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextPrimary
+                        color      = TextPrimary
                     )
                     Text(
-                        text = FileChunker.formatFileSize(chunk.size.toLong()),
-                        fontSize = 11.sp,
-                        color = TextMuted,
+                        text       = FileChunker.formatFileSize(chunk.size.toLong()),
+                        fontSize   = 11.sp,
+                        color      = TextMuted,
                         fontFamily = FontFamily.Monospace
                     )
                 }
@@ -1078,15 +1098,15 @@ private fun ChunkCard(chunk: FileChunk, modifier: Modifier = Modifier) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(AccentGreen.copy(alpha = 0.1f))
-                    .border(1.dp, AccentGreen.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                    .background(AccentGreen.copy(0.1f))
+                    .border(1.dp, AccentGreen.copy(0.25f), RoundedCornerShape(20.dp))
                     .padding(horizontal = 10.dp, vertical = 3.dp)
             ) {
                 Text(
-                    text = "Ready",
-                    fontSize = 10.sp,
+                    text       = "Ready",
+                    fontSize   = 10.sp,
                     fontWeight = FontWeight.Medium,
-                    color = AccentGreen
+                    color      = AccentGreen
                 )
             }
         }
