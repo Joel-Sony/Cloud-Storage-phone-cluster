@@ -22,20 +22,30 @@ async def distribute_chunk(db, chunk, manager):
 
     # 3. Create a list of tasks to send commands in parallel
     tasks = []
+    has_failed_assignments = False
+
     for assignment in new_assignments:
-        tasks.append(
-            manager.send_command(
-                device_id=assignment.device_id,
-                command_type="DOWNLOAD_CHUNK",
-                data={
-                    "chunk_id": chunk.chunk_id,
-                    "download_url": f"{SERVER_BASE_URL}/chunks/{chunk.chunk_id}/download",
-                    "expected_hash": chunk.chunk_hash
-                }
+        if assignment.device_id in manager.active:
+            tasks.append(
+                manager.send_command(
+                    device_id=assignment.device_id,
+                    command_type="DOWNLOAD_CHUNK",
+                    data={
+                        "chunk_id": chunk.chunk_id,
+                        "download_url": f"{SERVER_BASE_URL}/chunks/{chunk.chunk_id}/download",
+                        "expected_hash": chunk.chunk_hash
+                    }
+                )
             )
-        )
-        print(f"SENDING DOWNLOAD CHUNK OVER WS to {assignment.device_id}")
-        
-    
+            print(f"SENDING DOWNLOAD CHUNK OVER WS to {assignment.device_id}")
+        else:
+            print(f"Skipping WS send: Device {assignment.device_id} is not connected. Marking assignment as FAILED.")
+            assignment.replica_status = "FAILED"
+            has_failed_assignments = True
+
+    if has_failed_assignments:
+        db.commit()
+
     # Send all commands at once instead of one-by-one
-    await asyncio.gather(*tasks)
+    if tasks:
+        await asyncio.gather(*tasks)
