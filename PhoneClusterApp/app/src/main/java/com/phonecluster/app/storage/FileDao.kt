@@ -5,7 +5,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
-
 @Dao
 interface FileDao {
 
@@ -20,4 +19,7 @@ interface FileDao {
 
     @Query("SELECT * FROM files")
     suspend fun getAllFilesOnce(): List<FileEntity>
+
+    @Query("SELECT * FROM files WHERE serverFileId = :id LIMIT 1")
+    suspend fun getFileByServerId(id: Long): FileEntity?
 }

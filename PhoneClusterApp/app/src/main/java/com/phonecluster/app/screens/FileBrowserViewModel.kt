@@ -1,16 +1,16 @@
 package com.phonecluster.app.screens
-import com.phonecluster.app.utils.FileRepository
+
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
 import com.phonecluster.app.storage.AppDatabase
 import com.phonecluster.app.storage.FileEntity
+import com.phonecluster.app.utils.FileRepository
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class FileBrowserViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -26,9 +26,24 @@ class FileBrowserViewModel(application: Application) : AndroidViewModel(applicat
             )
 
     fun downloadFile(fileId: Long) {
+
         viewModelScope.launch {
+
             try {
-                repository.downloadFile(fileId)
+
+                val file = dao.getFileByServerId(fileId)
+
+                if (file != null) {
+
+                    repository.downloadFile(
+                        fileId = fileId,
+                        fileName = file.fileName
+                    )
+
+                } else {
+                    Log.e("DOWNLOAD", "File metadata not found for id $fileId")
+                }
+
             } catch (e: Exception) {
                 Log.e("DOWNLOAD", "Download failed: ${e.message}")
             }

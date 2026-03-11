@@ -15,7 +15,10 @@ class FileRepository {
         private const val ENCRYPTION_PASSWORD = "mypassword123"
     }
 
-    suspend fun downloadFile(fileId: Long) = withContext(Dispatchers.IO) {
+    suspend fun downloadFile(
+        fileId: Long,
+        fileName: String
+    ) = withContext(Dispatchers.IO) {
 
         val request = Request.Builder()
             .url("$SERVER_BASE_URL/files/$fileId/download")
@@ -37,11 +40,19 @@ class FileRepository {
             aad = byteArrayOf()
         )
 
-        saveFileLocally(fileId, decryptedBytes)
+        saveFileLocally(fileName, decryptedBytes)
     }
 
-    private fun saveFileLocally(fileId: Long, data: ByteArray) {
-        val file = File("/storage/emulated/0/Download/file_$fileId.bin")
+    private fun saveFileLocally(fileName: String, data: ByteArray) {
+
+        val downloadsDir = File("/storage/emulated/0/Download")
+
+        if (!downloadsDir.exists()) {
+            downloadsDir.mkdirs()
+        }
+
+        val file = File(downloadsDir, fileName)
+
         file.writeBytes(data)
     }
 }
