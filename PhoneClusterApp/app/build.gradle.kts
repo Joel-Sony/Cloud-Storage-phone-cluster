@@ -89,7 +89,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("ai.djl.huggingface:tokenizers:0.24.0")

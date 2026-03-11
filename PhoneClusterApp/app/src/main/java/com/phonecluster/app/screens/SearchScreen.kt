@@ -37,7 +37,7 @@ import com.phonecluster.app.ml.EmbeddingEngine
 import com.phonecluster.app.ml.OnnxTokenizer
 import com.phonecluster.app.ml.SimilarityUtils
 import com.phonecluster.app.storage.AppDatabase
-
+import androidx.lifecycle.viewmodel.compose.viewModel
 // ─── Color Tokens ─────────────────────────────────────────────────────────────
 
 private val BgDeep      = Color(0xFF020617)
@@ -58,6 +58,7 @@ data class ChatMessage(
 )
 
 data class SearchResult(
+    val serverfileId: Int,
     val fileName: String,
     val fileType: String,
     val score: Float
@@ -81,6 +82,8 @@ fun SearchScreen(
 
     val db  = AppDatabase.getDatabase(context)
     val dao = db.fileDao()
+
+    val viewModel: FileBrowserViewModel = viewModel()
 
     // Auto-scroll to bottom on new messages
     LaunchedEffect(messages.size) {
@@ -125,7 +128,12 @@ fun SearchScreen(
                             message.results != null -> {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     message.results.forEach { result ->
-                                        FileResultCard(result = result)
+                                        FileResultCard(
+                                            result = result,
+                                            onDownload = { id ->
+                                                viewModel.downloadFile(id.toLong())
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -173,6 +181,7 @@ fun SearchScreen(
 
                             val resultList = ranked.map { (file, score) ->
                                 SearchResult(
+                                    serverfileId   = file.serverFileId,
                                     fileName = file.fileName,
                                     fileType = file.fileType,
                                     score    = score
@@ -401,7 +410,10 @@ private fun SystemLabel(text: String) {
 // ─── File Result Card ─────────────────────────────────────────────────────────
 
 @Composable
-fun FileResultCard(result: SearchResult) {
+fun FileResultCard(
+    result: SearchResult,
+    onDownload: (Int) -> Unit
+) {
 
     val scoreColor = when {
         result.score >= 0.8f -> Color(0xFF34D399)
@@ -496,7 +508,7 @@ fun FileResultCard(result: SearchResult) {
             }
 
             IconButton(
-                onClick  = { /* TODO: Download */ },
+                onClick  = { onDownload(result.serverfileId) },
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
