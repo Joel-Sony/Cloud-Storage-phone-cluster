@@ -4,7 +4,7 @@
    Auto-refreshes every 10 seconds.
    ────────────────────────────────────────────────────────────── */
 
-const API_URL = '/admin/dashboard';
+const API_URL = 'http://localhost:8000/admin/dashboard';
 const REFRESH_MS = 10_000;
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -67,12 +67,12 @@ function setConnectionStatus(status, text) {
 
 function renderOverview(ov) {
     const map = {
-        'card-users':   ov.total_users,
+        'card-users': ov.total_users,
         'card-devices': ov.total_devices,
-        'card-online':  ov.online_devices,
+        'card-online': ov.online_devices,
         'card-offline': ov.offline_devices,
-        'card-files':   ov.total_files,
-        'card-chunks':  ov.total_chunks,
+        'card-files': ov.total_files,
+        'card-chunks': ov.total_chunks,
     };
     for (const [id, val] of Object.entries(map)) {
         const el = document.querySelector(`#${id} .card__value`);
@@ -83,8 +83,8 @@ function renderOverview(ov) {
 
     // Storage bar
     const used = ov.total_storage_used || 0;
-    const cap  = ov.total_capacity || 1;
-    const pct  = Math.min((used / cap) * 100, 100);
+    const cap = ov.total_capacity || 1;
+    const pct = Math.min((used / cap) * 100, 100);
     document.getElementById('storage-text').textContent =
         `${formatBytes(used)} / ${formatBytes(cap)}`;
     document.getElementById('storage-fill').style.width = pct + '%';
@@ -171,27 +171,118 @@ function renderUsers(users) {
 }
 
 function renderReplication(summary) {
-    const active      = summary['ACTIVE']      || 0;
-    const replicating = summary['REPLICATING']  || 0;
-    const lost        = summary['LOST']         || 0;
-    const failed      = summary['FAILED']       || 0;
-    const total       = active + replicating + lost + failed || 1;
+    const active = summary['ACTIVE'] || 0;
+    const replicating = summary['REPLICATING'] || 0;
+    const lost = summary['LOST'] || 0;
+    const failed = summary['FAILED'] || 0;
+    const total = active + replicating + lost + failed || 1;
 
-    document.querySelector('#repl-active .repl-card__value').textContent      = active;
-    document.querySelector('#repl-replicating .repl-card__value').textContent  = replicating;
-    document.querySelector('#repl-lost .repl-card__value').textContent         = lost;
-    document.querySelector('#repl-failed .repl-card__value').textContent       = failed;
+    document.querySelector('#repl-active .repl-card__value').textContent = active;
+    document.querySelector('#repl-replicating .repl-card__value').textContent = replicating;
+    document.querySelector('#repl-lost .repl-card__value').textContent = lost;
+    document.querySelector('#repl-failed .repl-card__value').textContent = failed;
 
     // Stacked bar
     const bar = document.getElementById('repl-bar');
     bar.innerHTML = [
-        { cls: 'active',      val: active },
+        { cls: 'active', val: active },
         { cls: 'replicating', val: replicating },
-        { cls: 'lost',        val: lost },
-        { cls: 'failed',      val: failed },
+        { cls: 'lost', val: lost },
+        { cls: 'failed', val: failed },
     ].filter(s => s.val > 0)
-     .map(s => `<div class="repl-bar__seg repl-bar__seg--${s.cls}" style="width:${(s.val / total * 100).toFixed(1)}%" title="${s.cls}: ${s.val}"></div>`)
-     .join('');
+        .map(s => `<div class="repl-bar__seg repl-bar__seg--${s.cls}" style="width:${(s.val / total * 100).toFixed(1)}%" title="${s.cls}: ${s.val}"></div>`)
+        .join('');
+}
+
+// ── Chart.js Setup ────────────────────────────────────────────
+
+Chart.defaults.color = '#7a8baa';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
+
+let clusterStorageChart, deviceStatusChart, replicationChart, uploadActivityChart, nodeStorageChart;
+
+function initCharts() {
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+    };
+
+    // 1. Cluster Storage (Doughnut)
+    clusterStorageChart = new Chart(document.getElementById('clusterStorageChart'), {
+        type: 'doughnut',
+        data: { labels: ['Used', 'Free'], datasets: [{ data: [0, 1], backgroundColor: ['#00e5c7', 'rgba(255,255,255,0.06)'], borderWidth: 0 }] },
+        options: { ...commonOptions, cutout: '75%' }
+    });
+
+    // 2. Device Status (Bar)
+    deviceStatusChart = new Chart(document.getElementById('deviceStatusChart'), {
+        type: 'bar',
+        data: { labels: ['Online', 'Offline'], datasets: [{ label: 'Devices', data: [0, 0], backgroundColor: ['#22c55e', '#ef4444'], borderRadius: 6 }] },
+        options: { ...commonOptions, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+    // 3. Replication Health (Pie)
+    replicationChart = new Chart(document.getElementById('replicationChart'), {
+        type: 'pie',
+        data: { labels: ['Active', 'Replicating', 'Lost', 'Failed'], datasets: [{ data: [0, 0, 0, 0], backgroundColor: ['#22c55e', '#38bdf8', '#facc15', '#ef4444'], borderWidth: 0 }] },
+        options: commonOptions
+    });
+
+    // 4. Upload Activity (Line)
+    uploadActivityChart = new Chart(document.getElementById('uploadActivityChart'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'Files Uploaded', data: [], borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', fill: true, tension: 0.3, pointRadius: 4 }] },
+        options: { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+    // 5. Node Storage (Bar)
+    nodeStorageChart = new Chart(document.getElementById('nodeStorageChart'), {
+        type: 'bar',
+        data: { labels: [], datasets: [{ label: 'Used (%)', data: [], backgroundColor: '#a78bfa', borderRadius: 4 }] },
+        options: { ...commonOptions, scales: { y: { beginAtZero: true, max: 100 } } }
+    });
+}
+
+function updateCharts(data) {
+    // 1. Storage
+    const used = data.overview.total_storage_used || 0;
+    const cap = data.overview.total_capacity || 1;
+    clusterStorageChart.data.datasets[0].data = [used, cap - used];
+    clusterStorageChart.update();
+
+    // 2. Device Status
+    deviceStatusChart.data.datasets[0].data = [data.overview.online_devices, data.overview.offline_devices];
+    deviceStatusChart.update();
+
+    // 3. Replication
+    const rs = data.replica_summary;
+    replicationChart.data.datasets[0].data = [rs['ACTIVE'] || 0, rs['REPLICATING'] || 0, rs['LOST'] || 0, rs['FAILED'] || 0];
+    replicationChart.update();
+
+    // 4. Upload Activity (group by day)
+    const dates = {};
+    data.files.forEach(f => {
+        if (!f.upload_timestamp) return;
+        const d = new Date(f.upload_timestamp).toLocaleDateString();
+        dates[d] = (dates[d] || 0) + 1;
+    });
+    // Sort chronologically
+    const sortedDates = Object.keys(dates).sort((a,b) => new Date(a) - new Date(b));
+    uploadActivityChart.data.labels = sortedDates;
+    uploadActivityChart.data.datasets[0].data = sortedDates.map(d => dates[d]);
+    uploadActivityChart.update();
+
+    // 5. Node Storage (Cluster mode only)
+    const clusterNodes = data.devices.filter(d => d.mode === 'Cluster');
+    nodeStorageChart.data.labels = clusterNodes.map(d => d.device_name || d.device_id);
+    nodeStorageChart.data.datasets[0].data = clusterNodes.map(d => {
+        const c = d.storage_capacity || 1;
+        const u = c - (d.available_storage || 0);
+        return Math.min((u / c) * 100, 100).toFixed(1);
+    });
+    nodeStorageChart.update();
 }
 
 // ── Main fetch + render ─────────────────────────────────────
@@ -207,6 +298,8 @@ async function fetchDashboard() {
         renderFiles(data.files);
         renderUsers(data.users);
         renderReplication(data.replica_summary);
+        
+        updateCharts(data);
 
         setConnectionStatus('online', 'Live');
         document.getElementById('last-refresh').textContent =
@@ -218,6 +311,7 @@ async function fetchDashboard() {
 }
 
 // Initial load
+initCharts();
 fetchDashboard();
 
 // Auto-refresh

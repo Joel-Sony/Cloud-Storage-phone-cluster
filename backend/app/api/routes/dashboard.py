@@ -22,8 +22,19 @@ def admin_dashboard(db: Session = Depends(get_db)):
     total_chunks = db.query(func.count(Chunk.chunk_id)).scalar() or 0
 
     total_storage_used = db.query(func.coalesce(func.sum(FileModel.file_size), 0)).scalar()
-    total_capacity = db.query(func.coalesce(func.sum(Device.storage_capacity), 0)).scalar()
-    total_available = db.query(func.coalesce(func.sum(Device.available_storage), 0)).scalar()
+
+    cluster_online_devices = db.query(Device).filter(
+        Device.mode == "Cluster",
+        Device.status == "ONLINE"
+    )
+
+    total_capacity = cluster_online_devices.with_entities(
+        func.coalesce(func.sum(Device.storage_capacity), 0)
+    ).scalar()
+
+    total_available = cluster_online_devices.with_entities(
+        func.coalesce(func.sum(Device.available_storage), 0)
+    ).scalar()
 
     online_devices = (
         db.query(func.count(Device.device_id))

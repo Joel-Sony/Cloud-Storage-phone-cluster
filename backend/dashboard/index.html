@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -52,44 +54,82 @@
         <h2 class="section__title">Cluster Overview</h2>
         <div class="cards" id="overview-cards">
             <div class="card card--accent" id="card-users">
-                <div class="card__icon">👤</div>
+                <div class="card__icon"><i data-lucide="users"></i></div>
                 <div class="card__value" data-target="0">0</div>
                 <div class="card__label">Total Users</div>
             </div>
             <div class="card card--cyan" id="card-devices">
-                <div class="card__icon">📱</div>
+                <div class="card__icon"><i data-lucide="smartphone"></i></div>
                 <div class="card__value" data-target="0">0</div>
                 <div class="card__label">Total Devices</div>
             </div>
             <div class="card card--green" id="card-online">
-                <div class="card__icon">🟢</div>
+                <div class="card__icon"><i data-lucide="activity"></i></div>
                 <div class="card__value" data-target="0">0</div>
-                <div class="card__label">Online</div>
+                <div class="card__label">Online Devices</div>
             </div>
             <div class="card card--red" id="card-offline">
-                <div class="card__icon">🔴</div>
+                <div class="card__icon"><i data-lucide="alert-circle"></i></div>
                 <div class="card__value" data-target="0">0</div>
-                <div class="card__label">Offline</div>
+                <div class="card__label">Offline Devices</div>
             </div>
             <div class="card card--purple" id="card-files">
-                <div class="card__icon">📁</div>
+                <div class="card__icon"><i data-lucide="folder-open"></i></div>
                 <div class="card__value" data-target="0">0</div>
                 <div class="card__label">Total Files</div>
             </div>
             <div class="card card--blue" id="card-chunks">
-                <div class="card__icon">🧩</div>
+                <div class="card__icon"><i data-lucide="blocks"></i></div>
                 <div class="card__value" data-target="0">0</div>
-                <div class="card__label">Total Chunks</div>
+                <div class="card__label">Total Replication Chunks</div>
             </div>
-            <div class="card card--wide card--storage" id="card-storage">
-                <div class="card__icon">💾</div>
-                <div class="card__storage-info">
-                    <div class="card__label">Storage Used</div>
-                    <div class="card__value" id="storage-text">— / —</div>
-                    <div class="storage-bar">
-                        <div class="storage-bar__fill" id="storage-fill" style="width: 0%"></div>
-                    </div>
+        </div>
+    </section>
+
+    <!-- ─── Storage Overview ───────────────────────────────── -->
+    <section class="section" id="storage-section">
+        <h2 class="section__title">Storage Utilization</h2>
+        <div class="storage-container">
+            <div class="storage-card">
+                <div class="storage-card__header">
+                    <div class="storage-card__icon"><i data-lucide="hard-drive"></i></div>
+                    <div class="storage-card__title">Cluster Storage Capacity</div>
                 </div>
+                <div class="storage-card__info">
+                    <div class="storage-card__value" id="storage-text">— / —</div>
+                </div>
+                <div class="storage-bar-large">
+                    <div class="storage-bar-large__fill" id="storage-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Analytics Dashboard ────────────────────────────── -->
+    <section class="section" id="analytics-section">
+        <h2 class="section__title">Cluster Analytics</h2>
+        <div class="charts-grid top-charts">
+            <div class="chart-card">
+                <h3 class="chart-card__title">Cluster Storage Usage</h3>
+                <div class="chart-container"><canvas id="clusterStorageChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3 class="chart-card__title">Device Status</h3>
+                <div class="chart-container"><canvas id="deviceStatusChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3 class="chart-card__title">Replication Health</h3>
+                <div class="chart-container"><canvas id="replicationChart"></canvas></div>
+            </div>
+        </div>
+        <div class="charts-grid bottom-charts">
+            <div class="chart-card chart-card--wide">
+                <h3 class="chart-card__title">Upload Activity</h3>
+                <div class="chart-container"><canvas id="uploadActivityChart"></canvas></div>
+            </div>
+            <div class="chart-card chart-card--wide">
+                <h3 class="chart-card__title">Node Storage Distribution</h3>
+                <div class="chart-container"><canvas id="nodeStorageChart"></canvas></div>
             </div>
         </div>
     </section>
@@ -198,5 +238,8 @@
     </footer>
 
     <script src="app.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>
