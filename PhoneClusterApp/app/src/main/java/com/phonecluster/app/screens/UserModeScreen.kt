@@ -880,7 +880,7 @@ private fun SelectedFileCard(info: ChunkedFileInfo, modifier: Modifier = Modifie
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 MetaItem(label = "Chunks", value = "${info.totalChunks}")
-                MetaItem(label = "Chunk size", value = "10 KB")
+                MetaItem(label = "Chunk size", value = "40 KB")
                 MetaItem(label = "Total size", value = formatSize(info.size))
             }
         }
