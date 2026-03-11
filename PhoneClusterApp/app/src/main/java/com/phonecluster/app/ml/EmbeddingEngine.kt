@@ -37,11 +37,19 @@ class EmbeddingEngine(private val context: Context) {
             "token_type_ids" to tokenTypeTensor
         )
 
+        val inferenceStart = System.currentTimeMillis()
         val results = session.run(inputs)
+        val inferenceEnd = System.currentTimeMillis()
+        Log.d("PIPELINE_TIMING", "  ONNX session.run() inference: ${inferenceEnd - inferenceStart} ms")
 
         val output = results[0].value as Array<Array<FloatArray>>
 
-        return meanPooling(output[0], attentionMask[0])
+        val poolingStart = System.currentTimeMillis()
+        val embedding = meanPooling(output[0], attentionMask[0])
+        val poolingEnd = System.currentTimeMillis()
+        Log.d("PIPELINE_TIMING", "  Mean pooling: ${poolingEnd - poolingStart} ms")
+
+        return embedding
     }
 
     private fun meanPooling(

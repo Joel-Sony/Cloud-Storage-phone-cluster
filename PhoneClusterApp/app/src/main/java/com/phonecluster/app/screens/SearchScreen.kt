@@ -162,22 +162,36 @@ fun SearchScreen(
                         )
 
                         try {
+                            // ── STEP 1: Tokenization ──────────────────────
+                            val t0 = System.currentTimeMillis()
                             val tokenizer = OnnxTokenizer(context)
                             val (inputIds, attentionMask, tokenTypeIds) =
                                 tokenizer.tokenize(currentQuery)
+                            val t1 = System.currentTimeMillis()
+                            android.util.Log.d("PIPELINE_TIMING", "Tokenization: ${t1 - t0} ms")
 
+                            // ── STEP 2: ONNX Embedding ────────────────────
                             val queryEmbedding = engine.generateEmbedding(
                                 inputIds, attentionMask, tokenTypeIds
                             )
+                            val t2 = System.currentTimeMillis()
+                            android.util.Log.d("PIPELINE_TIMING", "ONNX Embedding inference: ${t2 - t1} ms")
 
+                            // ── STEP 3: Room DB Fetch ─────────────────────
                             val files = withContext(Dispatchers.IO) {
                                 dao.getAllFilesOnce()
                             }
+                            val t3 = System.currentTimeMillis()
+                            android.util.Log.d("PIPELINE_TIMING", "Room DB fetch (${files.size} files): ${t3 - t2} ms")
 
+                            // ── STEP 4: Cosine Similarity Ranking ─────────
                             val ranked = files
                                 .map { it to SimilarityUtils.cosineSimilarity(queryEmbedding, it.embedding) }
                                 .sortedByDescending { it.second }
                                 .take(3)
+                            val t4 = System.currentTimeMillis()
+                            android.util.Log.d("PIPELINE_TIMING", "Cosine similarity + ranking: ${t4 - t3} ms")
+                            android.util.Log.d("PIPELINE_TIMING", "TOTAL search pipeline: ${t4 - t0} ms")
 
                             val resultList = ranked.map { (file, score) ->
                                 SearchResult(
