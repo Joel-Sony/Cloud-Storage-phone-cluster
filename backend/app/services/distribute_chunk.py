@@ -2,7 +2,7 @@ import asyncio
 from app.models.chunk_replication import ChunkReplication
 from app.services.plan_replication import plan_replication
 from app.core.constants import SERVER_BASE_URL
-
+from app.models.chunk import Chunk
 
 async def distribute_chunk(db, chunk_id, manager):
 

@@ -58,7 +58,7 @@ data class ChatMessage(
 )
 
 data class SearchResult(
-    val serverfileId: Int,
+    val serverfileId: Long,
     val fileName: String,
     val fileType: String,
     val score: Float
@@ -131,7 +131,7 @@ fun SearchScreen(
                                         FileResultCard(
                                             result = result,
                                             onDownload = { id ->
-                                                viewModel.downloadFile(id.toLong())
+                                                viewModel.downloadFile(id)
                                             }
                                         )
                                     }
@@ -412,7 +412,7 @@ private fun SystemLabel(text: String) {
 @Composable
 fun FileResultCard(
     result: SearchResult,
-    onDownload: (Int) -> Unit
+    onDownload: (Long) -> Unit
 ) {
 
     val scoreColor = when {

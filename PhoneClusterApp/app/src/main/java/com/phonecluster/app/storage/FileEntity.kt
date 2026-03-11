@@ -9,7 +9,7 @@ data class FileEntity(
     @PrimaryKey(autoGenerate = true)
     val localId: Int = 0,
 
-    val serverFileId: Int,
+    val serverFileId: Long,
     val fileName: String,
     val fileType: String,
     val fileDate: Long,

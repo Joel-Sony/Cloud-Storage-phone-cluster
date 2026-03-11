@@ -49,4 +49,19 @@ class FileBrowserViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
+
+    fun deleteFile(fileId: Long) {
+
+        viewModelScope.launch {
+
+            // Optimistic local delete
+            dao.deleteFileByServerId(fileId)
+
+            try {
+                repository.deleteFile(fileId)
+            } catch (e: Exception) {
+                Log.e("DELETE", "Remote delete failed: ${e.message}")
+            }
+        }
+    }
 }

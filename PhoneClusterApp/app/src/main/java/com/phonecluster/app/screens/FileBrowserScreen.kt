@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.phonecluster.app.storage.FileEntity
 import java.text.SimpleDateFormat
 import java.util.*
+import com.phonecluster.app.screens.FileBrowserViewModel
 
 // ─── Color Tokens ────────────────────────────────────────────────────────────
 
@@ -128,7 +129,8 @@ fun FileBrowserScreen(
                 itemsIndexed(files) { _, file ->
                     FileItem(
                         file       = file,
-                        onDownload = { id -> viewModel.downloadFile(id) }
+                        onDownload = { id -> viewModel.downloadFile(id) },
+                        onDelete   = { id -> viewModel.deleteFile(id) }
                     )
                 }
             }
@@ -178,22 +180,6 @@ private fun FileBrowserTopBar(
                         text     = "$fileCount items  ·  PocketCluster",
                         fontSize = 11.sp,
                         color    = TextMuted
-                    )
-                }
-            },
-            actions = {
-                IconButton(onClick = { /* TODO: search */ }) {
-                    Icon(
-                        imageVector    = Icons.Default.Search,
-                        contentDescription = "Search",
-                        modifier       = Modifier.size(20.dp)
-                    )
-                }
-                IconButton(onClick = { /* TODO: sort */ }) {
-                    Icon(
-                        imageVector    = Icons.Default.Sort,
-                        contentDescription = "Sort",
-                        modifier       = Modifier.size(20.dp)
                     )
                 }
             }
@@ -331,7 +317,8 @@ private fun SummaryChip(label: String, sublabel: String, color: Color) {
 @Composable
 fun FileItem(
     file: FileEntity,
-    onDownload: (Long) -> Unit
+    onDownload: (Long) -> Unit,
+    onDelete: (Long) -> Unit
 ) {
     val typeStyle = resolveFileType(file.fileType, file.fileName)
     var pressed   by remember { mutableStateOf(false) }
@@ -459,7 +446,7 @@ fun FileItem(
                 }
 
                 IconButton(
-                    onClick  = { /* TODO delete */ },
+                    onClick = { onDelete(file.serverFileId.toLong()) },
                     modifier = Modifier.size(38.dp)
                 ) {
                     Icon(

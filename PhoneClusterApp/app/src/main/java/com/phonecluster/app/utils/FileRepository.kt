@@ -55,4 +55,18 @@ class FileRepository {
 
         file.writeBytes(data)
     }
+
+    suspend fun deleteFile(fileId: Long) = withContext(Dispatchers.IO) {
+
+        val request = Request.Builder()
+            .url("$SERVER_BASE_URL/files/$fileId")
+            .delete()
+            .build()
+
+        val response = client.newCall(request).execute()
+
+        if (!response.isSuccessful) {
+            throw RuntimeException("Delete failed: ${response.code}")
+        }
+    }
 }

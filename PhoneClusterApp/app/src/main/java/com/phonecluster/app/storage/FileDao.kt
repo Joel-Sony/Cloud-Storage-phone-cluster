@@ -14,12 +14,12 @@ interface FileDao {
     @Query("SELECT * FROM files")
     fun getAllFiles(): Flow<List<FileEntity>>
 
-    @Query("DELETE FROM files WHERE serverFileId = :serverFileId")
-    suspend fun deleteByServerId(serverFileId: Int)
-
     @Query("SELECT * FROM files")
     suspend fun getAllFilesOnce(): List<FileEntity>
 
     @Query("SELECT * FROM files WHERE serverFileId = :id LIMIT 1")
     suspend fun getFileByServerId(id: Long): FileEntity?
+
+    @Query("DELETE FROM files WHERE serverFileId = :id")
+    suspend fun deleteFileByServerId(id: Long)
 }

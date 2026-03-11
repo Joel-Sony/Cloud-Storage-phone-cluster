@@ -345,7 +345,7 @@ fun UserModeScreen(
                                             Log.d("ROOM_TEST", "Inserting into Room DB")
                                             dao.insert(
                                                 FileEntity(
-                                                    serverFileId = fileId,
+                                                    serverFileId = fileId.toLong(),
                                                     fileName     = info.name,
                                                     fileType     = info.mimeType ?: "unknown",
                                                     fileDate     = System.currentTimeMillis(),
