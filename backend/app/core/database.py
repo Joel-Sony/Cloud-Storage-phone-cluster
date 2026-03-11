@@ -14,15 +14,18 @@ DATABASE_URL = (
 
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,   # auto-reconnect if MySQL drops connection
+    pool_size=100,
+    max_overflow=40,
+    pool_timeout=30,
+    pool_recycle=1800
 )
 
 SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
     bind=engine,
+    autoflush=False,
+    autocommit=False,
+    expire_on_commit=False
 )
-
 Base = declarative_base()
 
 from app.models.user import User

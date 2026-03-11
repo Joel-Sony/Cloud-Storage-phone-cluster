@@ -44,41 +44,51 @@ async def download_file(file_id: int, db: Session = Depends(get_db)):
         media_type="application/octet-stream",
         filename=f"file_{file_id}.bin"
     )
-
 @router.delete("/files/{file_id}")
 async def delete_file(file_id: int, db: Session = Depends(get_db)):
+
     # 1. Check if file exists
     db_file = db.query(FileModel).filter(FileModel.file_id == file_id).first()
     if not db_file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    # 2. Get all chunks for this file to clean up physical files
-    chunks = db.query(Chunk).filter(Chunk.file_id == file_id).all()
-    
-    # 3. Delete file record (cascading deletes chunks and replications)
+    # 2. Get chunk IDs BEFORE deleting
+    chunk_ids = [
+        c.chunk_id
+        for c in db.query(Chunk).filter(Chunk.file_id == file_id).all()
+    ]
+
+    # 3. Delete DB records
     try:
-        db.delete(db_file)
+        db.delete(db_file)   # cascades to chunks + replications
         db.commit()
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {str(e)}"
+        )
 
-    # 4. Cleanup physical files in TEMP_CHUNK_DIR
-    # Clean up chunk files
-    for chunk in chunks:
-        chunk_path = TEMP_CHUNK_DIR / f"chunk_{chunk.chunk_id}.bin"
+    # 4. Delete physical chunk files
+    for chunk_id in chunk_ids:
+        chunk_path = TEMP_CHUNK_DIR / f"chunk_{chunk_id}.bin"
+
         if chunk_path.exists():
             try:
                 chunk_path.unlink()
             except Exception as e:
                 print(f"Failed to delete chunk file {chunk_path}: {e}")
 
-    # Clean up assembled file if it exists
+    # 5. Delete assembled file
     assembled_path = TEMP_CHUNK_DIR / f"file_{file_id}.bin"
+
     if assembled_path.exists():
         try:
             assembled_path.unlink()
         except Exception as e:
             print(f"Failed to delete assembled file {assembled_path}: {e}")
 
-    return {"status": "success", "message": f"File {file_id} and all related data deleted."}
+    return {
+        "status": "success",
+        "message": f"File {file_id} and all related data deleted."
+    }
