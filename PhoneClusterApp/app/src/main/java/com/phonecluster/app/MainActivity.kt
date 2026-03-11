@@ -43,14 +43,6 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        val file = File(filesDir, "test.txt")
-        file.writeText("test")
-
-        DownloadNotificationHelper.showDownloadComplete(
-            this,
-            file
-        )
-
         enableEdgeToEdge()
         setContent {
             val engine = remember { EmbeddingEngine(this) }
