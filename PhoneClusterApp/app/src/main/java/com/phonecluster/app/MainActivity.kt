@@ -13,6 +13,11 @@ import com.phonecluster.app.screens.StorageModeScreen
 import com.phonecluster.app.screens.UserModeScreen
 import com.phonecluster.app.ui.theme.CloudStorageAppTheme
 import androidx.activity.enableEdgeToEdge
+import android.Manifest
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import com.phonecluster.app.utils.DownloadNotificationHelper
+import java.io.File
 
 // Navigation destinations
 sealed class Screen {
@@ -30,12 +35,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Request notification permission for Android 13+
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            requestPermissions(
-                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+        if (Build.VERSION.SDK_INT >= 33) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 1
             )
         }
+
+        val file = File(filesDir, "test.txt")
+        file.writeText("test")
+
+        DownloadNotificationHelper.showDownloadComplete(
+            this,
+            file
+        )
+
         enableEdgeToEdge()
         setContent {
             val engine = remember { EmbeddingEngine(this) }

@@ -36,6 +36,7 @@ class FileBrowserViewModel(application: Application) : AndroidViewModel(applicat
                 if (file != null) {
 
                     repository.downloadFile(
+                        context = getApplication(),
                         fileId = fileId,
                         fileName = file.fileName
                     )

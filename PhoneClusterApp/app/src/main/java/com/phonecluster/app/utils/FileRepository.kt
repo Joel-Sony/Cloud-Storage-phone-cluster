@@ -6,7 +6,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
-
+import android.content.Context
+import android.util.Log
 class FileRepository {
 
     private val client = OkHttpClient()
@@ -16,6 +17,7 @@ class FileRepository {
     }
 
     suspend fun downloadFile(
+        context: Context,
         fileId: Long,
         fileName: String
     ) = withContext(Dispatchers.IO) {
@@ -40,10 +42,10 @@ class FileRepository {
             aad = byteArrayOf()
         )
 
-        saveFileLocally(fileName, decryptedBytes)
+        saveFileLocally(context, fileName, decryptedBytes)
     }
 
-    private fun saveFileLocally(fileName: String, data: ByteArray) {
+    private fun saveFileLocally(context: Context, fileName: String, data: ByteArray) {
 
         val downloadsDir = File("/storage/emulated/0/Download")
 
@@ -54,6 +56,10 @@ class FileRepository {
         val file = File(downloadsDir, fileName)
 
         file.writeBytes(data)
+
+        Log.d("DOWNLOAD_DEBUG", "File saved: ${file.absolutePath}")
+
+        DownloadNotificationHelper.showDownloadComplete(context, file)
     }
 
     suspend fun deleteFile(fileId: Long) = withContext(Dispatchers.IO) {
