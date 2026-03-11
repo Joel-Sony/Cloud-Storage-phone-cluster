@@ -37,4 +37,4 @@ async def repair_under_replicated_chunks(db: Session):
                 replicas=DESIRED_REPLICAS
             )
 
-            await distribute_chunk(db, chunk, manager)
+            await distribute_chunk(db, chunk.chunk_id, manager)

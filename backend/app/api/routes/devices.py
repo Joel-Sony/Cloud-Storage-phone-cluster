@@ -122,7 +122,7 @@ async def upload_chunk_data(
     # Now that this specific chunk is safe on the server, 
     # we tell the cluster to come get it.
     print("Using manager:", manager)
-    await distribute_chunk(db, db_chunk, manager)
+    await distribute_chunk(db, db_chunk.chunk_id, manager)
 
     return {"status": "success", "chunk_id": db_chunk.chunk_id}
 
