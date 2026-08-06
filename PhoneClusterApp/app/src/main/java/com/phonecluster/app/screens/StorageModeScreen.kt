@@ -43,7 +43,7 @@ private val TextMuted     = Color(0xFF475569)
 private val ErrorRed      = Color(0xFFEF4444)
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
-
+//---
 @Composable
 fun StorageModeScreen(
     onBackClick: (() -> Unit)? = null
