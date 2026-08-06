@@ -8,7 +8,7 @@ const API_URL = 'http://localhost:8000/admin/dashboard';
 const REFRESH_MS = 10_000;
 
 // ── Helpers ─────────────────────────────────────────────────
-
+//vr
 function formatBytes(bytes) {
     if (bytes == null || bytes === 0) return '0 B';
     const k = 1024;
